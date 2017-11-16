@@ -69,7 +69,12 @@ public class Host {
 			for(int j = 0; j < servAddress.length; j++){
 				packetMessage[j + 11] = servAddress[j];
 			}
+			serverPort = 12890;
+			packetMessage[16] = (byte) serverPort;
+			checksum.update(packetMessage);
+			packetMessage[17] = (byte) checksum.getValue();
 			DatagramPacket nData = new DatagramPacket(packetMessage, gatewayPort);
+			clientSocket.send(nData);
 			//receive ack from the IG for the connection being open
 			
 			while(open != false){
