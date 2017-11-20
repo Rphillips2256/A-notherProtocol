@@ -11,6 +11,7 @@ import java.net.DatagramPacket;
 import java.lang.*;
 import java.util.*;
 import java.util.zip.*;
+import java.nio.*;
 
 
 public class Host {
@@ -20,10 +21,11 @@ public class Host {
 	public static void main(String [] args){
 		
 		String filename;
-		byte [] servAddress;
+		byte [] servAddress, checkArray, portArray;
 		byte [] addr;
-		byte [] packetMessage = new byte[1024];
-		int desPri, gatewayPort, serverPort;
+		byte [] openMessage = new byte[1024];
+		int desPri, count;
+		long check, gatewayPort, serverPort, hostPort; 
 		CRC32 checksum = new CRC32();
 		boolean open = false;
 		
@@ -51,29 +53,43 @@ public class Host {
 			
 			// Determine server port number
 			gatewayPort = 58989;
-			
+			count = 0;
 			desPri = 1;
 			
 			
 			//Build the header and data of the open connection packet
 			
 			addr = clientSocket.getInetAddress().getAddress() ;
-			packetMessage = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 238,(byte) gatewayPort,
-					 (byte) clientSocket.getLocalPort()};
 			
 			for(int i = 0; i < addr.length; i++){
-				packetMessage[i+6] = addr[i];
+				openMessage[i] = addr[i];
+				count++;
 			}
-			servAddress = new byte[]{(byte) 0, (byte) 0, (byte) 0, (byte) 0};
-			packetMessage[11] = (byte) desPri;
-			for(int j = 0; j < servAddress.length; j++){
-				packetMessage[j + 11] = servAddress[j];
+			hostPort = clientSocket.getLocalPort();
+			
+			portArray = longToBytes(hostPort);
+			int temp = 0;
+			for(int i = 0; i < portArray.length; i++){
+				openMessage[i + count] = portArray[i];
+				temp++;
 			}
-			serverPort = 12890;
-			packetMessage[16] = (byte) serverPort;
-			checksum.update(packetMessage);
-			packetMessage[17] = (byte) checksum.getValue();
-			DatagramPacket nData = new DatagramPacket(packetMessage, gatewayPort);
+			
+			count += temp;
+			
+			portArray = new byte[2];
+			
+			portArray = longToBytes(gatewayPort);
+			
+			temp = 0;
+			
+			for(int i = 0; i < portArray.length; i++){
+				openMessage[i + count] = portArray[i];
+				temp++;
+			}
+			
+			count += temp;
+			
+			DatagramPacket nData = new DatagramPacket(openMessage, (int) gatewayPort);
 			clientSocket.send(nData);
 			//receive ack from the IG for the connection being open
 			
@@ -91,7 +107,7 @@ public class Host {
 
 				// Create a datagram
 				DatagramPacket datagram = 
-						new DatagramPacket(data, lengthOfMessage, destination, gatewayPort);
+						new DatagramPacket(data, lengthOfMessage, destination, (int) gatewayPort);
 
 				// Send a datagram carrying the message
 				clientSocket.send(datagram);
@@ -124,5 +140,11 @@ public class Host {
 			clientSocket.close();
 		}
 	
+	}
+	
+	public static byte[] longToBytes(long value) {
+	    ByteBuffer buffer = ByteBuffer.allocate(8);
+	    buffer.putLong(value);
+	    return buffer.array();
 	}
 }
