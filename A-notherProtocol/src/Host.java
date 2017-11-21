@@ -54,7 +54,6 @@ public class Host {
 			// Determine server port number
 			gatewayPort = 58989;
 			count = 0;
-			desPri = 1;
 			
 			
 			//Build the header and data of the open connection packet
@@ -84,6 +83,32 @@ public class Host {
 			
 			for(int i = 0; i < portArray.length; i++){
 				openMessage[i + count] = portArray[i];
+				temp++;
+			}
+			
+			count += temp;
+			
+			desPri = 1;
+			
+			openMessage[count + 1] = (byte) desPri;
+			count += 1;
+			
+			servAddress = new byte[] {(byte) 0, (byte) 0, (byte) 0, (byte) 0};
+			temp = 0;
+			for(int i = 0; i < servAddress.length; i++){
+				openMessage[i + count] = servAddress[i];
+				temp++;
+			}
+			count += temp;
+			
+			checksum.update(openMessage);
+			check = checksum.getValue();
+			
+			checkArray = longToBytes(check);
+			
+			temp = 0;
+			for(int i = 0; i < checkArray.length; i++){
+				openMessage[i + count] = checkArray[i];
 				temp++;
 			}
 			
