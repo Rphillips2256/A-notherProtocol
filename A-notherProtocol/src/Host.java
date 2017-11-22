@@ -20,12 +20,15 @@ public class Host {
 	
 	public static void main(String [] args){
 		
+		//used variable declaration
+		
 		String filename;
 		byte [] servAddress, checkArray, portArray;
 		byte [] addr;
-		byte [] openMessage = new byte[1024];
-		int desPri, count;
-		long check, gatewayPort, serverPort, hostPort; 
+		byte [] message = new byte[1024];
+		byte [] header = new byte[20];
+		int desPri, count, gatewayPort, serverPort, hostPort;
+		long check;
 		CRC32 checksum = new CRC32();
 		boolean open = false;
 		
@@ -58,87 +61,96 @@ public class Host {
 			
 			//Build the header and data of the open connection packet
 			
-			addr = clientSocket.getInetAddress().getAddress() ;
+			addr = new byte[] {(byte)146, (byte) 57, (byte) 194, (byte) 32};
 			
 			for(int i = 0; i < addr.length; i++){
-				openMessage[i] = addr[i];
+				message[i] = addr[i];
 				count++;
 			}
+			System.out.println(count);
 			hostPort = clientSocket.getLocalPort();
 			
-			portArray = longToBytes(hostPort);
-			int temp = 0;
-			for(int i = 0; i < portArray.length; i++){
-				openMessage[i + count] = portArray[i];
-				temp++;
-			}
-			
-			count += temp;
-			
+			ByteBuffer portBuf = ByteBuffer.allocate(2);
+			portBuf.putShort((short) hostPort);
 			portArray = new byte[2];
 			
-			portArray = longToBytes(gatewayPort);
-			
-			temp = 0;
-			
+			for(int i = 0; i<portArray.length; i++) {
+				portArray[i] = portBuf.get(i);
+			}
+			int temp = 0;
 			for(int i = 0; i < portArray.length; i++){
-				openMessage[i + count] = portArray[i];
+				message[i + count] = portArray[i];
 				temp++;
 			}
 			
 			count += temp;
+			System.out.println(count);
 			
 			desPri = 1;
 			
-			openMessage[count + 1] = (byte) desPri;
+			message[count + 1] = (byte) desPri;
 			count += 1;
+			System.out.println(count);
 			
 			servAddress = new byte[] {(byte) 0, (byte) 0, (byte) 0, (byte) 0};
 			temp = 0;
 			for(int i = 0; i < servAddress.length; i++){
-				openMessage[i + count] = servAddress[i];
+				message[i + count] = servAddress[i];
 				temp++;
 			}
+			
 			count += temp;
 			
-			checksum.update(openMessage);
+			System.out.println(count);
+			
+			checksum.update(message);
+			
 			check = checksum.getValue();
 			
-			checkArray = longToBytes(check);
+			System.out.println(check);
+			
+			ByteBuffer checkSumBuf = ByteBuffer.allocate(4);
+			checkSumBuf.putInt((int) check);
+			checkArray = new byte[4];
+			
+			for(int i = 0; i < 4; i++) {
+				checkArray[i] = checkSumBuf.get(i);
+			}
 			
 			temp = 0;
 			for(int i = 0; i < checkArray.length; i++){
-				openMessage[i + count] = checkArray[i];
+				message[i + count] = checkArray[i];
 				temp++;
 			}
 			
 			count += temp;
+			System.out.println(count);
 			
-			DatagramPacket nData = new DatagramPacket(openMessage, (int) gatewayPort);
+			DatagramPacket nData = new DatagramPacket(message, message.length);
 			clientSocket.send(nData);
 			//receive ack from the IG for the connection being open
 			
 			while(open != false){
 				
 
-				//build and send data packets with packetMessage and other arrays
+				//build and send data packets with message array
 
 
 				// Message and its length		
-				String message = "Hello World!";
-				int lengthOfMessage = message.length(); 
-				byte[] data = new byte[lengthOfMessage];
-				data = message.getBytes();
+				//String message = "Hello World!";
+				//int lengthOfMessage = message.length(); 
+				//byte[] data = new byte[lengthOfMessage];
+				//data = message.getBytes();
 
 				// Create a datagram
-				DatagramPacket datagram = 
-						new DatagramPacket(data, lengthOfMessage, destination, (int) gatewayPort);
+				//DatagramPacket datagram = 
+						//new DatagramPacket(data, lengthOfMessage, destination, (int) gatewayPort);
 
 				// Send a datagram carrying the message
-				clientSocket.send(datagram);
+				//clientSocket.send(datagram);
 
 				// Print out the message sent
-				System.out.println("Message sent is:   [" + message + "]");
+				//System.out.println("Message sent is:   [" + message + "]");
 
 				// Prepare for receiving
 				//should not have to change anything from here.
@@ -165,11 +177,5 @@ public class Host {
 			clientSocket.close();
 		}
 	
-	}
-	
-	public static byte[] longToBytes(long value) {
-	    ByteBuffer buffer = ByteBuffer.allocate(8);
-	    buffer.putLong(value);
-	    return buffer.array();
 	}
 }
