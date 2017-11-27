@@ -21,8 +21,6 @@ public class Host {
 	public static void main(String [] args){
 		
 		//used variable declaration
-		
-		String filename;
 		byte [] servAddress, checkArray, portArray, gatePort;
 		byte [] addr;
 		byte [] gatewayAddr = new byte[4];
@@ -36,7 +34,7 @@ public class Host {
 		
 		
 		
-		
+		//TODO: make a trace function.
 		
 		
 		try {
@@ -126,7 +124,7 @@ public class Host {
 			
 			count += temp;
 			
-			System.out.println(count);
+			System.out.println(count);//only for debugging will be commented out
 			
 			temp = 0;
 			
@@ -156,7 +154,7 @@ public class Host {
 				dataBuffer[i + newtemp] = servp[i];
 			}
 			
-			//checksum time
+			//do the checksum should be done last after data has been built
 			checksum.update(dataBuffer);
 			check = checksum.getValue();
 			System.out.println(check);
@@ -188,39 +186,32 @@ public class Host {
 			for(int i = 0; i < dataBuffer.length; i++) {
 				message[i + header.length] = dataBuffer[i];
 			}
-			//System.out.println(header.length);
-			//System.out.println(dataBuffer.length);
-			//System.out.println(message.length);
+			
+			/*
+			 * TODO: Add in the received message from gateway and set open flag.
+			 */
 			
 			//DatagramPacket nData = new DatagramPacket(message, message.length);
 			//clientSocket.send(nData);
 			//receive ack from the IG for the connection being open
 			
 			while(open != false){
+				/*
+				 * TODO: Create the other packets to be sent based on received data from gateway connection
+				 * also do error detection on received packets(to be done in later stages)
+				 * figure out what to use more than likely a file input stream.
+				 */
+				
+				//set variables for the loop. and other needed parts.
+
 				
 
-				//build and send data packets with message array
+				/*
+				 *  TODO: Prepare for receiving
+				 *  should not have to change anything from here.
+				 *  Create a buffer for receiving
+				 */
 
-
-				// Message and its length		
-				//String message = "Hello World!";
-				//int lengthOfMessage = message.length(); 
-				//byte[] data = new byte[lengthOfMessage];
-				//data = message.getBytes();
-
-				// Create a datagram
-				//DatagramPacket datagram = 
-						//new DatagramPacket(data, lengthOfMessage, destination, (int) gatewayPort);
-
-				// Send a datagram carrying the message
-				//clientSocket.send(datagram);
-
-				// Print out the message sent
-				//System.out.println("Message sent is:   [" + message + "]");
-
-				// Prepare for receiving
-				//should not have to change anything from here.
-				// Create a buffer for receiving
 				byte[] receivedData = new byte[2048];
 
 				// Create a datagram
