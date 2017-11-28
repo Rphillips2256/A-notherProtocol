@@ -1,5 +1,5 @@
 /*
- * Host.java builds and sends the files to the server and receives acknowledgments.
+ * Host.java builds and sends the files to the server through the gateway and receives acknowledgments.
  * 
  * 
  * 
@@ -47,7 +47,7 @@ public class Host {
 			byte[] b = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 238};
 			InetAddress address = null;
 			try {
-	        		address = InetAddress.getByAddress(b);
+	        		address = InetAddress.getByAddress(gatewayAddr);
 			} catch (UnknownHostException impossible) {
 				System.out.println("Unable to determine the host by address!");
 			}
@@ -191,8 +191,8 @@ public class Host {
 			 * TODO: Add in the received message from gateway and set open flag.
 			 */
 			
-			//DatagramPacket nData = new DatagramPacket(message, message.length);
-			//clientSocket.send(nData);
+			DatagramPacket nData = new DatagramPacket(message, message.length);
+			clientSocket.send(nData);
 			//receive ack from the IG for the connection being open
 			
 			while(open != false){
