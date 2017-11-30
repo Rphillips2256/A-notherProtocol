@@ -21,18 +21,22 @@ public class Host {
 	public static void main(String [] args){
 
 		//used variable declaration
-		byte [] servAddress, checkArray, portArray, gatePort;
+		byte [] servAddress, checkArray;
 		byte [] addr;
 		byte [] gatewayAddr = new byte[4];
 		byte [] message;
 		byte [] dataBuffer;
 		byte [] header = new byte[16];
-		int desPri, count, gatewayPort, serverPort, hostPort;
+		byte [] mainDataMessage = new byte [2048];
+		int desPri = 0, gatewayPort, serverPort, hostPort;
 		long check;
 		CRC32 checksum = new CRC32();
 		boolean open = false;
 		boolean flag = true;
-
+		String name = "//Users/rs5644nr/Desktop/CS413/alice.txt";
+		File file = new File(name);
+		FileInputStream fis;
+		//BufferedReader buf;
 
 		//TODO: make a trace function.
 		while(flag) {
@@ -44,7 +48,10 @@ public class Host {
 
 				//Get the IG ip address and port number
 				//modify this to make it correct.
-				byte[] b = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 238};
+				gatewayAddr = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 238};
+				
+				
+				
 				InetAddress address = null;
 				try {
 					address = InetAddress.getByAddress(gatewayAddr);
@@ -52,97 +59,26 @@ public class Host {
 					System.out.println("Unable to determine the host by address!");
 				}
 				InetAddress destination = address;
-
-
+				
+				
+				
 				// Determine server port number, gateway and host.
+				//subject to change to an input type of method
 				gatewayPort = 58989;
 				serverPort = 18987;
 				hostPort = clientSocket.getLocalPort();
 
 				//Prep the open connection message starting with prepping data for header and actual message.
 				//gateway ip address
-				for(int i = 0; i < b.length; i++) {
-					gatewayAddr[i] = b[i];
-				}
+				
 
 				addr = new byte[] {(byte)146, (byte) 57, (byte) 194, (byte) 32};
 				servAddress = new byte[] {(byte) 0, (byte) 0, (byte) 0, (byte) 0};
-
-				//host port number
-				ByteBuffer portBuf = ByteBuffer.allocate(2);
-				portBuf.putShort((short) hostPort);
-				portArray = new byte[2];
-				for(int i = 0; i<portArray.length; i++) {
-					portArray[i] = portBuf.get(i);
-				}
-
-				//gateway port number
-				ByteBuffer gateBuf = ByteBuffer.allocate(2);
-				gateBuf.putShort((short) gatewayPort);
-				gatePort = new byte [2];
-				for(int i = 0; i < gatePort.length; i++) {
-					gatePort[i] = gateBuf.get(i);
-				}
-
-				//server port number
-				ByteBuffer servPort = ByteBuffer.allocate(2);
-				servPort.putShort((short) serverPort);
-				byte [] servp = new byte [2];
-				for(int i = 0; i < servp.length; i++) {
-					servp[i] = servPort.get(i);
-				}
-
-				//Start to build the header.
-				//open header has fields for host ip, gateway ip, host port, gateway port, and checksum
-				//count is used to keep the data organized in the header.
-				count = 0;
-				//temp is to update count after first iteration.
-				int temp = 0;
-				// start with gateway address
-				for(int i = 0; i < gatewayAddr.length; i++) {
-					header[i] = gatewayAddr[i];
-					count++;
-				}
-				//debugging use
-				System.out.println(count);
-
-				// put the host address in
-				for(int i = 0; i < addr.length; i++) {
-					header[i + count] = addr[i];
-					temp++;
-				}
-
-				count += temp;
-
-				System.out.println(count);//only for debugging will be commented out
-
-				temp = 0;
-
-				//add in host port
-				for(int i = 0; i < portArray.length; i++) {
-					header[i + count] = portArray[i];
-					temp++;
-				}
-				count += temp;
-				System.out.println(count);
-
-				temp = 0;
-				// build the data portion of the message
-
-				dataBuffer = new byte [7];
-				desPri = 1;
-				dataBuffer[0] = (byte) desPri;
-
-				int newtemp = 0; 
-
-				for(int i = 1; i < servAddress.length; i++) {
-					dataBuffer[i] = servAddress[i];
-					newtemp++;
-				}
-
-				for(int i = 0; i < servp.length; i++) {
-					dataBuffer[i + newtemp] = servp[i];
-				}
+				
+				header = openHead(addr, gatewayAddr, hostPort, gatewayPort);
+				
+				dataBuffer = new byte[7];
+				dataBuffer = openMess(servAddress, serverPort, desPri);
 
 				//do the checksum should be done last after data has been built
 				checksum.update(dataBuffer);
@@ -157,17 +93,19 @@ public class Host {
 
 				//build the rest of the the header and build entire packet.
 
-				temp = 0;
+				int temp = 0;
+				int count1 = header.length;
+				System.out.println(count1);
 
 				for(int i = 0; i < checkArray.length; i++) {
-					header[i + count] = checkArray[i];
+					header[i + count1] = checkArray[i];
 					temp++;
 				}
 
-				count += temp;
+				count1 += temp;
 
-				System.out.println(count);
-
+				System.out.println(count1);
+				//buid the openMessage
 				message = new byte[23];
 				for(int i = 0; i < header.length; i++) {
 					message[i] = header[i];
@@ -177,13 +115,13 @@ public class Host {
 					message[i + header.length] = dataBuffer[i];
 				}
 
-				/*
-				 * TODO: Add in the received message from gateway and set open flag.
-				 */
-
-				DatagramPacket nData = new DatagramPacket(message, message.length);
+				
+				//make a packet
+				DatagramPacket nData = new DatagramPacket(message, message.length, destination, gatewayPort);
+				//send the packet
 				clientSocket.send(nData);
-				//receive ack from the IG for the connection being open
+				
+				//receive something from the IG for the connection being open
 
 				byte[] receivedData = new byte[2048];
 
@@ -212,41 +150,20 @@ public class Host {
 				String openMessage = new String(data(recData));
 				System.out.println(openMessage);
 
-				if(openMessage != "ACK") { // checks the returned message from the gateway if no acknowledgement resend
-					clientSocket.send(nData);
-					
-					// Create another datagram
-					receivedDatagram = 
-							new DatagramPacket(receivedData, receivedData.length);
-
-					// Receive a datagram
-					clientSocket.receive(receivedDatagram);
-
-					//Figure out where data message begins and header ends
-
-					receivedHeader = new byte[20];
-					recData = new byte[14];
-
-					openMessage = new String(data(recData));
-					System.out.println(openMessage);
-					if(openMessage != "ACK") { //second send/ if after the second attempt end the program with unknown error
-						System.out.println("Unknown error ending session!");
-						flag = false;
-						break;
-					}
-				} else {
+				if(openMessage.toUpperCase() == "ACK") {
 					open = true;
 				}
-
+				
 				while(open){
-					/*
-					 * TODO: Create the other packets to be sent based on received data from gateway connection
-					 * also do error detection on received packets(to be done in later stages)
-					 * figure out what to use more than likely a file input stream.
-					 */
-
+					
+					//prepare the packets for transmission,
+					
+					//TODO: helper methods????
+					
+					
+					
 					//set variables for the loop. and other needed parts.
-
+					
 
 
 					/*
@@ -255,20 +172,8 @@ public class Host {
 					 *  split the packet into header and data also.
 					 *  Create a buffer for receiving
 					 */
-
-					byte [] nReceivedData = new byte[2048];
-
-					// Create a datagram
-					DatagramPacket newDatagram = 
-							new DatagramPacket(nReceivedData, nReceivedData.length);
-
-					// Receive a datagram
-					clientSocket.receive(newDatagram);
-
-					// Display the message in the datagram
-					String echoMessage = new String(receivedData, 0, receivedDatagram.getLength());
-					System.out.println("Message echoed is: [" + echoMessage + "]");	
 				}
+				
 			}
 
 			catch (IOException ioEx) {
@@ -276,6 +181,7 @@ public class Host {
 			} 
 			finally {
 				// Close the socket 
+				
 				clientSocket.close();
 			}
 		}
@@ -307,4 +213,111 @@ public class Host {
 		
 		return c;
 	}
+	//TODO: Add helper methods so that main is not cluttered
+	
+	//open message header method
+	public static byte [] openHead(byte[] hostAdd, byte [] gateAdd, int gPort, int hPort) {
+		byte [] head = new byte[16];
+		byte [] portArray, gatePort;
+		
+		//host port number
+		ByteBuffer portBuf = ByteBuffer.allocate(2);
+		portBuf.putShort((short) hPort);
+		portArray = new byte[2];
+		for(int i = 0; i<portArray.length; i++) {
+			portArray[i] = portBuf.get(i);
+		}
+
+		//gateway port number
+		ByteBuffer gateBuf = ByteBuffer.allocate(2);
+		gateBuf.putShort((short) gPort);
+		gatePort = new byte [2];
+		for(int i = 0; i < gatePort.length; i++) {
+			gatePort[i] = gateBuf.get(i);
+		}
+
+		//Start to build the header.
+		//open header has fields for host ip, gateway ip, host port, gateway port, and checksum
+		//count is used to keep the data organized in the header.
+		int count = 0;
+		//temp is to update count after first iteration.
+		int temp = 0;
+		// start with gateway address
+		for(int i = 0; i < gateAdd.length; i++) {
+			head[i] = gateAdd[i];
+			count++;
+		}
+		//debugging use
+		System.out.println(count);
+
+		// put the host address in
+		for(int i = 0; i < hostAdd.length; i++) {
+			head[i + count] = hostAdd[i];
+			temp++;
+		}
+
+		count += temp;
+
+		System.out.println(count);//only for debugging will be commented out
+
+		temp = 0;
+
+		//add in host port
+		for(int i = 0; i < portArray.length; i++) {
+			head[i + count] = portArray[i];
+			temp++;
+		}
+		count += temp;
+		System.out.println(count);
+		
+		return head;
+	}
+	
+	public static byte [] openMess(byte [] servAdd, int sPort, int priority) {
+		byte [] mess = new byte[7];
+		
+		
+		mess[0] = (byte) priority;
+		int newtemp = 1;
+		
+		//server port number
+		ByteBuffer servPort = ByteBuffer.allocate(2);
+		servPort.putShort((short) sPort);
+		byte [] servp = new byte [2];
+		for(int i = 0; i < servp.length; i++) {
+			servp[i] = servPort.get(i);
+		}
+		
+		
+
+		
+
+		for(int i = 1; i < servAdd.length; i++) {
+			mess[i] = servAdd[i];
+			newtemp++;
+		}
+
+		for(int i = 0; i < servp.length; i++) {
+			mess[i + newtemp] = servp[i];
+		}
+		
+		
+		return mess;
+	}
+	
+	public static byte [] mainHeader() {
+		byte [] head = new byte[20];
+		
+		return head;
+	}
+	
+	public static byte[] mainMessage() {
+		byte [] message = new byte[2048];
+		
+		
+		return message;
+	}
+	
+	//TODO: trace implentation menu screen????????
+	//TODO: other menus as needed??!?!?!?!?
 }
