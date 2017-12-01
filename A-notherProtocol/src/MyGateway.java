@@ -128,7 +128,7 @@ public class MyGateway {
 
                 // Create a datagram
                 DatagramPacket datagram = 
-                        new DatagramPacket(data, lengthOfMessage, receiverAddr, receiverPortNumber);
+                        new DatagramPacket(data, lengthOfMessage, receiverAddr, receiverPort);
 
                 // Send a datagram carrying the echo message			
                 serverSocket.send(datagram);
