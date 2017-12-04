@@ -11,15 +11,43 @@ import java.util.*;
 
 
 public class Connection {
+    private int priority, id;
     private InetAddress addr1, addr2;
     private int port1, port2;
     
     
-    public Connection(InetAddress addr1, int port1, InetAddress addr2, int port2) {
+    public Connection() {
+        id = 0;
+        priority = 0;
+        addr1 = null;
+        port1 = 0;
+        addr2 = null;
+        port2 = 0;
+    }
+    
+    public Connection(int priority, InetAddress addr1, int port1, InetAddress addr2, int port2) {
+        id = 0;
+        this.priority = priority;
         this.addr1 = addr1;
         this. port1 = port1;
         this.addr2 = addr2;
         this.port2 = port2;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 
     public InetAddress getAddr1() {
@@ -52,5 +80,15 @@ public class Connection {
 
     public void setPort2(int port2) {
         this.port2 = port2;
+    }
+    
+    public String toString() {
+        String conn = ("ID: " + id + "\n" +
+                      "Priority: " + priority + "\n" +
+                      "Host IP address: " + addr1 + "\n" +
+                      "Host port number: " + port1 + "\n" +
+                      "Server IP address: " + addr2 + "\n" +
+                      "Server port number: " + port2);
+        return conn;
     }
 }
