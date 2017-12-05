@@ -12,11 +12,15 @@ import java.lang.*;
 import java.util.*;
 import java.util.zip.*;
 import java.nio.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 
 public class Host {
 
 	static DatagramSocket clientSocket;
+	static List<byte []> packet = new ArrayList();
 
 	public static void main(String [] args){
 
@@ -134,8 +138,8 @@ public class Host {
 
 				//Figure out where data message begins and header ends
 
-				byte [] receivedHeader = new byte[20];
-				byte[] recData = new byte[14];
+				byte [] receivedHeader = new byte[8];
+				byte[] recData = new byte[3];
 				int out = 0;
 				for(int i = 0; i < receivedHeader.length; i++) {
 					receivedHeader[i] = receivedData[i];
@@ -155,8 +159,10 @@ public class Host {
 				}
 				
 				while(open){
-					
 					//prepare the packets for transmission,
+					createPackets(name);
+					
+					
 					
 					//TODO: helper methods????
 					
@@ -288,10 +294,6 @@ public class Host {
 			servp[i] = servPort.get(i);
 		}
 		
-		
-
-		
-
 		for(int i = 1; i < servAdd.length; i++) {
 			mess[i] = servAdd[i];
 			newtemp++;
@@ -305,18 +307,87 @@ public class Host {
 		return mess;
 	}
 	
-	public static byte [] mainHeader() {
-		byte [] head = new byte[20];
+	public static byte [] mainHeader(int id, int seq, int dataLen, int totalSize) {
+		byte [] head = new byte[12];
+		int count = 0;
+		int temp = 0;
+		
+		ByteBuffer destId = ByteBuffer.allocate(2);
+		destId.putShort((short) id);
+		
+		for(int i = 0; i < 2; i++) {
+			head[i] = destId.get(i);
+			count++;
+		}
+		
+		ByteBuffer size = ByteBuffer.allocate(2);
+		size.putShort((short) totalSize);
+		for(int i = 0; i < 2; i++) {
+			head[i + count] = size.get(i);
+			temp++;
+		}
+		
+		count += temp;
+		temp = 0;
+		
+		ByteBuffer sequence = ByteBuffer.allocate(2);
+		sequence.putShort((short) seq);
+		for(int i = 0; i < 2; i++) {
+			head[i + count] = sequence.get(i);
+			temp++;
+		}
+		
+		count += temp;
+		temp = 0;
+		
+		ByteBuffer dLen = ByteBuffer.allocate(2);
+		dLen.putShort((short) dataLen);
+		for(int i = 0; i < 2; i++) {
+			head[i + count] = dLen.get(i);
+			temp++;
+		}
 		
 		return head;
 	}
 	
-	public static byte[] mainMessage() {
-		byte [] message = new byte[2048];
-		
-		
-		return message;
-	}
+	public static List createPackets(String file) throws IOException{
+	    
+	     //read the file into array
+	        Path path = Paths.get(file);
+	        byte[] data = Files.readAllBytes(path);
+
+	        int position = 0;
+	        int messageSent = data.length;
+	        
+	        //create an array for the message split into 16 bytes
+	        while(data.length > position)
+	        {
+	            int byteSize = 1500;
+	            byte[] bFile;
+	            
+	            if(messageSent < byteSize)
+	            {
+	                    bFile = new byte[messageSent];
+	                    System.arraycopy(data, position, bFile, 0, messageSent);
+	            }
+	            else
+	            {
+	                    bFile = new byte[byteSize];
+	                    System.arraycopy(data, position, bFile, 0, byteSize);
+	            }
+
+	        packet.add(bFile);
+	        
+	        //increase the position by max data size bytes
+	        position = position + 1500;
+	        //decrease the postion by 16 bytes
+	        messageSent = messageSent - 1500;
+
+	        
+	        }//end Whileloop
+	   
+	        return packet; 
+	}       
 	
 	//TODO: trace implentation menu screen????????
 	//TODO: other menus as needed??!?!?!?!?

@@ -28,6 +28,7 @@ public class MyGateway {
     // also get it set for the header in this part.
 	
     static DatagramSocket serverSocket;
+    
 
     private static final int PORT = 58989;
 	
