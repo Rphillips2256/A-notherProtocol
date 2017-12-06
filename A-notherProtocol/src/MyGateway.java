@@ -14,18 +14,8 @@ import java.util.zip.CRC32;
 
 
 public class MyGateway {
-    
-    //TODO: create the basic variables needed to perform functions
-		
-    //TODO: Create a MAP for keys and values to map each connection (connection map/table)
-    // Consider forwarding of keys to respective destinations.
 
     //Start gateway to receive messages and be ready to forward those messages.
-
-
-    //TODO:  Figure out how to build the table and what to use for priority
-    //set up the breakdown of the received packet into a header and data
-    // also get it set for the header in this part.
 	
     static DatagramSocket serverSocket;
     
@@ -43,13 +33,17 @@ public class MyGateway {
         Connection[] connectionTable = new Connection[tableSize];
         Connection newConn = new Connection();
         int id = random.nextInt(32767);
+        int index = -1;
         
         
         InetAddress igAddr, senderAddr, receiverAddr;
-        int senderPort, receiverPort, priority;
+        int senderPort, receiverPort, priority, lengthOfMessage;
         
         CRC32 checker = new CRC32();
         byte[] messageData;
+        int connID = 0;
+        int fileSize;
+        Connection currConn = new Connection();
         
         
         try {
@@ -77,28 +71,273 @@ public class MyGateway {
 
                 //Open received DatagramPacket
                 senderAddr = receivedDatagram.getAddress();			
-                int senderPortNumber = receivedDatagram.getPort();
-                int lengthOfMessage = receivedDatagram.getLength();			
+                senderPort = receivedDatagram.getPort();
+                lengthOfMessage = receivedDatagram.getLength();			
                 String message = new String(receivedData, 0, receivedDatagram.getLength());
                 
                 if(trace) {
-                       System.out.println("\nHost IP address: " + senderAddr.toString() +
-                                          "\nHost port number: " + senderPortNumber +
+                       System.out.println("\nSender IP address: " + senderAddr.toString() +
+                                          "\nSender port number: " + senderPort +
                                           "\nMessage: " + message);
                 }
                 
                 //Establish which kind of message is being received
                 if(lengthOfMessage < 16) {  //ACK or close message
-                    if(receivedData[10] == 0 && receivedData[11] == 0) {//ACK
-                                                                                    //Use -1 for open
+                    if(receivedData[10] == 0 && receivedData[11] == 0) {        //ACK
+                        if(trace) {
+                            System.out.println("ACK message received");
+                        }
+                        //Read header contents
+                        //Get IG's IP address
+                        byte[] a = new byte[]{receivedData[0], receivedData[1],
+                                                  receivedData[2], receivedData[3]};
+                        igAddr = InetAddress.getByAddress(a);
+
+                        if(trace) {
+                           System.out.println("IG IP address: " + igAddr.toString());
+                        }
+                        
+                        //Get connection ID
+                        byte[] b = new byte[]{receivedData[4], receivedData[5]};
+                            int low = b[0] >= 0 ? b[0] : 256 + b[0];
+                            int high = b[1] >= 0 ? b[1] : 256 + b[1];
+                                connID = low | (high << 8);
+                        
+                        if(trace) {
+                           System.out.println("Connection ID: " + connID);
+                        }
+                        
+                        //Read data
+                        messageData = new byte[lengthOfMessage - 12];
+                        for(int i = 12; i < lengthOfMessage; i++) {
+                            messageData[i] = receivedData[i];
+                        }
+
+                        if(trace) {
+                           System.out.println("Message: " + Arrays.toString(messageData));
+                        }
+                        
+                        //Forward message
+                        //Find Connection in connectionTable
+                        boolean match = false;
+                        for(int i = 0; i < tableCount; i++){
+                            if(connID == connectionTable[i].getId()){
+                                match = true;
+                                currConn = connectionTable[i];
+                                break;
+                            }
+                            else;
+                        }
+                        
+                        if(!match){//Not a valid Connection
+                            System.out.println("Invalid connection ID...");
+                        }
+                        
+                        else{
+                            if(trace) {
+                                System.out.println("Connection found...");
+                            }
+                            
+                            //Determine which address is sender/receiver
+                            if(senderAddr.equals(currConn.getAddr1())){
+                                receiverAddr = currConn.getAddr2();
+                                receiverPort = currConn.getPort2();
+                            }
+                            
+                            else{
+                                receiverAddr = currConn.getAddr1();
+                                receiverPort = currConn.getPort1();
+                            }
+                            
+                            if(trace) {
+                                System.out.println("\nSender IP address: " + senderAddr.toString() +
+                                                   "\nSender port number: " + senderPort +
+                                                   "\nReceiver IP address: " + receiverAddr.toString() +
+                                                   "\nReceiver port number: " + receiverPort);
+                            }
+                            
+                            // Create a buffer for sending
+                            byte[] data = new byte[lengthOfMessage];
+                            
+                            //Copy data
+                            for(int i = 0; i < lengthOfMessage; i++){
+                                data[i] = receivedData[i];
+                            }
+                            
+                            // Create a datagram
+                            DatagramPacket datagram = 
+                                    new DatagramPacket(data, data.length, receiverAddr, receiverPort);
+
+                            if(trace) {
+                                System.out.println("Message sent: " + Arrays.toString(data));
+                            }
+
+                            //Send datagram to Host			
+                            serverSocket.send(datagram);
+
+                            System.out.println("Message forwarded to Host...");
+                            
+                            //Handle Closing ACK
+                            //Find index of Connection
+                            for(int i = 0; i < tableCount; i++){
+                                if(currConn.getId() == connectionTable[i].getId()){
+                                    index = i;
+                                }
+                                
+                                else;
+                            }
+                            
+                            if(trace) {
+                                System.out.println("Connection index: " + index);
+                            }
+                            
+                            //Update connectionTable
+                            for(int i = (index + 1); i < tableCount; i++){
+                                connectionTable[i - 1] = connectionTable[i];
+                            }
+                            connectionTable[--tableCount] = null;
+                            
+                            if(trace) {
+                                System.out.println("Connection deleted..." +
+                                                   "New table count: " + tableCount);
+                            }
+                        }
                     }
                     
-                    else {                                              //Close
+                    else {                                                      //Close
+                        if(trace) {
+                            System.out.println("Close connection message received");
+                        }
+                        //Read header contents
+                        //Get IG's IP address
+                        byte[] a = new byte[]{receivedData[0], receivedData[1],
+                                                  receivedData[2], receivedData[3]};
+                        igAddr = InetAddress.getByAddress(a);
+
+                        if(trace) {
+                           System.out.println("IG IP address: " + igAddr.toString());
+                        }
                         
+                        //Get sender's IP address
+                        byte[] b = new byte[]{receivedData[4], receivedData[5],
+                                                  receivedData[6], receivedData[7]};
+                        senderAddr = InetAddress.getByAddress(b);
+
+                        if(trace) {
+                           System.out.println("Sender IP address: " + senderAddr.toString());
+                        }
+                    
+                        //Read data
+                        messageData = new byte[lengthOfMessage - 12];
+                        for(int i = 12; i < lengthOfMessage; i++) {
+                            messageData[i] = receivedData[i];
+                        }
+
+                        if(trace) {
+                           System.out.println("Message: " + Arrays.toString(messageData));
+                        }
+                        
+                        //Check for errors
+                        checker.update(messageData);
+                        byte[] checkArray = new byte[]{receivedData[8], receivedData[9],
+                                                        receivedData[10], receivedData[11]};
+                            int c0 = checkArray[0] >= 0 ? checkArray[0] : 256 + checkArray[0];
+                            int c1 = checkArray[1] >= 0 ? checkArray[1] : 256 + checkArray[1];
+                            int c2 = checkArray[2] >= 0 ? checkArray[2] : 256 + checkArray[2];
+                            int c3 = checkArray[3] >= 0 ? checkArray[3] : 256 + checkArray[3];
+                                long checkValue = c0 | (c1 << 8) | (c2 << 16) | (c3 << 24);
+
+                        if(trace) {
+                           System.out.println("CRC32 value: " + checkValue);
+                        }
+
+                        if(trace) {
+                            System.out.println("Comparing " + checker.getValue() +
+                                               " and " + checkValue);
+                        }
+                        if(checker.getValue() != checkValue) {//Error detected
+                            //Do nothing
+                            if(trace) {
+                                System.out.println("Error detected...");
+                            }
+                        }
+
+                        else {//No error detected
+                            //Get connection ID
+                            byte[] c = new byte[]{messageData[0], messageData[1]};
+                                int low = c[0] >= 0 ? c[0] : 256 + c[0];
+                                int high = c[1] >= 0 ? c[1] : 256 + c[1];
+                                    connID = low | (high << 8);
+
+                            if(trace) {
+                               System.out.println("Connection ID: " + connID);
+                            }
+                            
+                            //Forward message
+                            //Find Connection in connectionTable
+                            boolean match = false;
+                            for(int i = 0; i < tableCount; i++){
+                                if(connID == connectionTable[i].getId()){
+                                    match = true;
+                                    currConn = connectionTable[i];
+                                    break;
+                                }
+                                else;
+                            }
+
+                            if(!match){//Not a valid Connection
+                                System.out.println("Invalid connection ID...");
+                            }
+
+                            else{
+                                if(trace) {
+                                    System.out.println("Connection found...");
+                                }
+
+                                //Determine which address is sender/receiver
+                                if(senderAddr.equals(currConn.getAddr1())){
+                                    receiverAddr = currConn.getAddr2();
+                                    receiverPort = currConn.getPort2();
+                                }
+
+                                else{
+                                    receiverAddr = currConn.getAddr1();
+                                    receiverPort = currConn.getPort1();
+                                }
+
+                                if(trace) {
+                                    System.out.println("\nSender IP address: " + senderAddr.toString() +
+                                                       "\nSender port number: " + senderPort +
+                                                       "\nReceiver IP address: " + receiverAddr.toString() +
+                                                       "\nReceiver port number: " + receiverPort);
+                                }
+
+                                // Create a buffer for sending
+                                byte[] data = new byte[lengthOfMessage];
+
+                                //Copy data
+                                for(int i = 0; i < lengthOfMessage; i++){
+                                    data[i] = receivedData[i];
+                                }
+
+                                // Create a datagram
+                                DatagramPacket datagram = 
+                                        new DatagramPacket(data, data.length, receiverAddr, receiverPort);
+
+                                if(trace) {
+                                    System.out.println("Message sent: " + Arrays.toString(data));
+                                }
+
+                                //Send datagram to Server			
+                                serverSocket.send(datagram);
+
+                                System.out.println("Message forwarded to Server...");
+                            }
+                        }
                     }
                 }
                 
-                else if(receivedData[10] == 0 && receivedData[11] == 0) {//Open
+                else if(receivedData[10] == 0 && receivedData[11] == 0) {       //Open
                    if(trace) {
                        System.out.println("Open connection message received");
                     }
@@ -139,17 +378,17 @@ public class MyGateway {
                     }
                     
                     if(trace) {
-                       System.out.println("Message: " + messageData.toString());
+                       System.out.println("Message: " + Arrays.toString(messageData));
                     }
                     
                     //Check for errors
                     checker.update(messageData);
                     byte[] checkArray = new byte[]{receivedData[12], receivedData[13],
                                                     receivedData[14], receivedData[15]};
-                        int c0 = c[0] >= 0 ? c[0] : 256 + c[0];
-                        int c1 = c[1] >= 0 ? c[1] : 256 + c[1];
-                        int c2 = c[2] >= 0 ? c[2] : 256 + c[2];
-                        int c3 = c[3] >= 0 ? c[3] : 256 + c[3];
+                        int c0 = checkArray[0] >= 0 ? checkArray[0] : 256 + checkArray[0];
+                        int c1 = checkArray[1] >= 0 ? checkArray[1] : 256 + checkArray[1];
+                        int c2 = checkArray[2] >= 0 ? checkArray[2] : 256 + checkArray[2];
+                        int c3 = checkArray[3] >= 0 ? checkArray[3] : 256 + checkArray[3];
                             long checkValue = c0 | (c1 << 8) | (c2 << 16) | (c3 << 24);
                             
                     if(trace) {
@@ -264,7 +503,7 @@ public class MyGateway {
                                 new DatagramPacket(data, data.length, receiverAddr, receiverPort);
                         
                         if(trace) {
-                            System.out.println("Message sent: " + data.toString());
+                            System.out.println("Message sent: " + Arrays.toString(data));
                         }
 
                         // Send a datagram carrying the connection message			
@@ -275,13 +514,54 @@ public class MyGateway {
                 }
                 
                 else {                                                          //Data
+                    //Read header contents
+                    //Get IG's IP address
+                    byte[] a = new byte[]{receivedData[0], receivedData[1],
+                                              receivedData[2], receivedData[3]};
+                    igAddr = InetAddress.getByAddress(a);
                     
-                }
+                    if(trace) {
+                       System.out.println("IG IP address: " + igAddr.toString());
+                    }
+                    
+                    //Get connection ID
+                    byte[] b = new byte[]{receivedData[4], receivedData[5]};
+                        int low = b[0] >= 0 ? b[0] : 256 + b[0];
+                        int high = b[1] >= 0 ? b[1] : 256 + b[1];
+                            connID = low | (high << 8);
 
-                // Display received message and client address		 
-                System.out.println("The received message is: " + message);
-                System.out.println("The sender address is: " + senderAddr);
-                System.out.println("The sender port number is: " + senderPortNumber);
+                    if(trace) {
+                       System.out.println("Connection ID: " + connID);
+                    }
+                    
+                    //Get type of file
+                    int type = ((receivedData[6] & 0xc0) >> 6);
+                    if(type == 1){//Bit file
+                        if(trace) {
+                            System.out.println("Bit file");
+                        }
+                    }
+                    
+                    else if(type == 2){//Txt file
+                        if(trace) {
+                            System.out.println("Txt file");
+                        }
+                    }
+                    
+                    else {
+                        System.out.println("File type not supported");
+                    }
+                    
+                    //Get size of file
+                    
+                    
+                    //Read data
+                    
+                    //Generate errors
+                    
+                    //Forward message
+                                                                                ///////////////////////////////////////////////////////////////////
+                }
             }
 	} 
 		
