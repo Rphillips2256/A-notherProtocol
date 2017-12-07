@@ -41,10 +41,14 @@ public class MyGateway {
         
         CRC32 checker = new CRC32();
         byte[] messageData;
-        int connID = 0;
-        int fileSize;
+        int connID, seqNum, lastSeq;
         Connection currConn = new Connection();
         
+        //Stats
+        int fileSize;
+        long endTime;
+        int appCount, udpCount;
+        int rtMax;
         
         try {
             // Open a UDP datagram socket with a specified port number
@@ -553,9 +557,40 @@ public class MyGateway {
                     }
                     
                     //Get size of file
+                    byte[] c = new byte[]{(byte)(receivedData[6] & 0x3f), receivedData[7]};
+                        low = c[0] >= 0 ? c[0] : 256 + c[0];
+                        high = c[1] >= 0 ? c[1] : 256 + c[1];
+                            fileSize = low | (high << 8);
                     
+                    if(trace) {
+                        System.out.println("Size of file: " + fileSize);
+                    }
+                    
+                    //Get SEQ number
+                    byte[] d = new byte[]{receivedData[8], receivedData[9]};
+                        low = d[0] >= 0 ? d[0] : 256 + d[0];
+                        high = d[1] >= 0 ? d[1] : 256 + d[1];
+                            seqNum = low | (high << 8);
+                            
+                    if(trace) {
+                        System.out.println("Sequence number: " + seqNum);
+                    }
+                            
+                    //Get length of data
+                    byte[] e = new byte[]{receivedData[10], receivedData[11]};
+                        low = e[0] >= 0 ? e[0] : 256 + e[0];
+                        high = e[1] >= 0 ? e[1] : 256 + e[1];
+                            int dataLength = low | (high << 8);
+                            
+                    if(trace) {
+                        System.out.println("Length of data: " + dataLength);
+                    }
                     
                     //Read data
+                    messageData = new byte[dataLength];
+                    for(int i = 0; i < dataLength; i++){
+                        messageData[i] = receivedData[i + 16];
+                    }
                     
                     //Generate errors
                     
