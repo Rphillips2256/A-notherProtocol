@@ -14,6 +14,7 @@ public class Connection {
     private int priority, id;
     private InetAddress addr1, addr2;
     private int port1, port2;
+    private long startTime;
     
     
     public Connection() {
@@ -23,17 +24,19 @@ public class Connection {
         port1 = 0;
         addr2 = null;
         port2 = 0;
+        startTime = 0;
     }
     
-    public Connection(int priority, InetAddress addr1, int port1, InetAddress addr2, int port2) {
+    public Connection(int priority, InetAddress addr1, int port1, InetAddress addr2, int port2, long startTime) {
         id = 0;
         this.priority = priority;
         this.addr1 = addr1;
         this. port1 = port1;
         this.addr2 = addr2;
         this.port2 = port2;
+        this.startTime = startTime;
     }
-
+    
     public int getId() {
         return id;
     }
@@ -80,6 +83,14 @@ public class Connection {
 
     public void setPort2(int port2) {
         this.port2 = port2;
+    }
+    
+    public long getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
     }
     
     public String toString() {
