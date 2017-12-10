@@ -15,7 +15,12 @@ import java.util.zip.CRC32;
 
 public class MyGateway {
 
-    //Start gateway to receive messages and be ready to forward those messages.
+    /*TODO
+    * Error generation
+    * Stat display
+    * Log to file
+    * Priority support
+    */
 	
     static DatagramSocket serverSocket;
     
@@ -44,16 +49,16 @@ public class MyGateway {
         int connID, seqNum, lastSeq;
         Connection currConn = new Connection();
         
-        //Stats
+        //Stat variables
         int fileSize;
         long endTime;
         int appCount, udpCount;
         int rtMax;
         
+        
         try {
             // Open a UDP datagram socket with a specified port number
             int portNumber = PORT;
-            //int portNumber = port;
             serverSocket = new DatagramSocket(portNumber);
 
             System.out.println("Gateway starts...");
@@ -87,7 +92,7 @@ public class MyGateway {
                 
                 //Establish which kind of message is being received
                 if(lengthOfMessage < 16) {  //ACK or close message
-                    if(receivedData[10] == 0 && receivedData[11] == 0) {        //ACK
+                    if(receivedData[6] == 0 && receivedData[7] == 0) {          //ACK message
                         if(trace) {
                             System.out.println("ACK message received");
                         }
@@ -118,7 +123,9 @@ public class MyGateway {
                         }
 
                         if(trace) {
-                           System.out.println("Message: " + Arrays.toString(messageData));
+                            String tempMsg = new String(messageData, 0, messageData.length);
+                            
+                            System.out.println("Message: " + tempMsg);
                         }
                         
                         //Forward message
@@ -179,7 +186,7 @@ public class MyGateway {
                             //Send datagram to Host			
                             serverSocket.send(datagram);
 
-                            System.out.println("Message forwarded to Host...");
+                            System.out.println("Message forwarded...");
                             
                             //Handle Closing ACK
                             //Find index of Connection
@@ -208,7 +215,7 @@ public class MyGateway {
                         }
                     }
                     
-                    else {                                                      //Close
+                    else {                                                      //Close message
                         if(trace) {
                             System.out.println("Close connection message received");
                         }
@@ -238,7 +245,9 @@ public class MyGateway {
                         }
 
                         if(trace) {
-                           System.out.println("Message: " + Arrays.toString(messageData));
+                            String tempMsg = new String(messageData, 0, messageData.length);
+                            
+                            System.out.println("Message: " + tempMsg);
                         }
                         
                         //Check for errors
@@ -259,6 +268,7 @@ public class MyGateway {
                             System.out.println("Comparing " + checker.getValue() +
                                                " and " + checkValue);
                         }
+                        
                         if(checker.getValue() != checkValue) {//Error detected
                             //Do nothing
                             if(trace) {
@@ -335,13 +345,13 @@ public class MyGateway {
                                 //Send datagram to Server			
                                 serverSocket.send(datagram);
 
-                                System.out.println("Message forwarded to Server...");
+                                System.out.println("Message forwarded...");
                             }
                         }
                     }
                 }
                 
-                else if(receivedData[10] == 0 && receivedData[11] == 0) {       //Open
+                else if(receivedData[10] == 0 && receivedData[11] == 0) {       //Open message
                    if(trace) {
                        System.out.println("Open connection message received");
                     }
@@ -382,7 +392,9 @@ public class MyGateway {
                     }
                     
                     if(trace) {
-                       System.out.println("Message: " + Arrays.toString(messageData));
+                        String tempMsg = new String(messageData, 0, messageData.length);
+                            
+                        System.out.println("Message: " + tempMsg);
                     }
                     
                     //Check for errors
@@ -513,11 +525,11 @@ public class MyGateway {
                         // Send a datagram carrying the connection message			
                         serverSocket.send(datagram);
                         
-                        System.out.println("Message forwarded to Server...");
+                        System.out.println("Message forwarded...");
                     }
                 }
                 
-                else {                                                          //Data
+                else {                                                          //Data message
                     //Read header contents
                     //Get IG's IP address
                     byte[] a = new byte[]{receivedData[0], receivedData[1],
@@ -593,9 +605,67 @@ public class MyGateway {
                     }
                     
                     //Generate errors
-                    
-                    //Forward message
                                                                                 ///////////////////////////////////////////////////////////////////
+                    //Forward message
+                    //Find Connection in connectionTable
+                    boolean match = false;
+                    for(int i = 0; i < tableCount; i++){
+                        if(connID == connectionTable[i].getId()){
+                            match = true;
+                            currConn = connectionTable[i];
+                            break;
+                        }
+                        else;
+                    }
+
+                    if(!match){//Not a valid Connection
+                        System.out.println("Invalid connection ID...");
+                    }
+
+                    else{
+                        if(trace) {
+                            System.out.println("Connection found...");
+                        }
+
+                        //Determine which address is sender/receiver
+                        if(senderAddr.equals(currConn.getAddr1())){
+                            receiverAddr = currConn.getAddr2();
+                            receiverPort = currConn.getPort2();
+                        }
+
+                        else{
+                            receiverAddr = currConn.getAddr1();
+                            receiverPort = currConn.getPort1();
+                        }
+
+                        if(trace) {
+                            System.out.println("\nSender IP address: " + senderAddr.toString() +
+                                               "\nSender port number: " + senderPort +
+                                               "\nReceiver IP address: " + receiverAddr.toString() +
+                                               "\nReceiver port number: " + receiverPort);
+                        }
+
+                        // Create a buffer for sending
+                        byte[] data = new byte[lengthOfMessage];
+
+                        //Copy data
+                        for(int i = 0; i < lengthOfMessage; i++){
+                            data[i] = receivedData[i];
+                        }
+
+                        // Create a datagram
+                        DatagramPacket datagram = 
+                                new DatagramPacket(data, data.length, receiverAddr, receiverPort);
+
+                        if(trace) {
+                            System.out.println("Message sent: " + Arrays.toString(data));
+                        }
+
+                        //Send datagram to Server			
+                        serverSocket.send(datagram);
+
+                        System.out.println("Message forwarded...");
+                    }
                 }
             }
 	} 
