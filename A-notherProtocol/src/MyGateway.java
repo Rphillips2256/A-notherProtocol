@@ -9,6 +9,7 @@
 import java.io.*;
 import java.net.*;
 import java.lang.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.zip.CRC32;
 
@@ -254,22 +255,29 @@ public class MyGateway {
                         checker.update(messageData);
                         byte[] checkArray = new byte[]{receivedData[8], receivedData[9],
                                                         receivedData[10], receivedData[11]};
-                            int c0 = checkArray[0] >= 0 ? checkArray[0] : 256 + checkArray[0];
-                            int c1 = checkArray[1] >= 0 ? checkArray[1] : 256 + checkArray[1];
-                            int c2 = checkArray[2] >= 0 ? checkArray[2] : 256 + checkArray[2];
-                            int c3 = checkArray[3] >= 0 ? checkArray[3] : 256 + checkArray[3];
-                                long checkValue = c0 | (c1 << 8) | (c2 << 16) | (c3 << 24);
-
-                        if(trace) {
-                           System.out.println("CRC32 value: " + checkValue);
-                        }
-
-                        if(trace) {
-                            System.out.println("Comparing " + checker.getValue() +
-                                               " and " + checkValue);
-                        }
-                        
-                        if(checker.getValue() != checkValue) {//Error detected
+                            ByteBuffer bb = ByteBuffer.wrap(checkArray);
+                                long checkValue = bb.getInt();
+                                
+                            long checkVal = 0;
+                                
+                            if(checkValue < 0){
+                                checkVal = checkValue + 2147483647 + 2147483647 + 2;
+                            }
+                            
+                            else {
+                                checkVal = checkValue;
+                            }
+                            
+                            
+                    if(trace) {
+                       System.out.println("CRC32 value: " + checkVal);
+                    }
+                    
+                    if(trace) {
+                        System.out.println("Comparing " + checker.getValue() +
+                                           " and " + checkVal);
+                    }
+                    if(checker.getValue() != checkVal) {//Error detected
                             //Do nothing
                             if(trace) {
                                 System.out.println("Error detected...");
@@ -388,7 +396,7 @@ public class MyGateway {
                     //Get data
                     messageData = new byte[lengthOfMessage - 16];
                     for(int i = 16; i < lengthOfMessage; i++) {
-                        messageData[i] = receivedData[i];
+                        messageData[i - 16] = receivedData[i];
                     }
                     
                     if(trace) {
@@ -401,21 +409,29 @@ public class MyGateway {
                     checker.update(messageData);
                     byte[] checkArray = new byte[]{receivedData[12], receivedData[13],
                                                     receivedData[14], receivedData[15]};
-                        int c0 = checkArray[0] >= 0 ? checkArray[0] : 256 + checkArray[0];
-                        int c1 = checkArray[1] >= 0 ? checkArray[1] : 256 + checkArray[1];
-                        int c2 = checkArray[2] >= 0 ? checkArray[2] : 256 + checkArray[2];
-                        int c3 = checkArray[3] >= 0 ? checkArray[3] : 256 + checkArray[3];
-                            long checkValue = c0 | (c1 << 8) | (c2 << 16) | (c3 << 24);
+                            ByteBuffer bb = ByteBuffer.wrap(checkArray);
+                                long checkValue = bb.getInt();
+                                
+                            long checkVal = 0;
+                                
+                            if(checkValue < 0){
+                                checkVal = checkValue + 2147483647 + 2147483647 + 2;
+                            }
+                            
+                            else {
+                                checkVal = checkValue;
+                            }
+                            
                             
                     if(trace) {
-                       System.out.println("CRC32 value: " + checkValue);
+                       System.out.println("CRC32 value: " + checkVal);
                     }
                     
                     if(trace) {
                         System.out.println("Comparing " + checker.getValue() +
-                                           " and " + checkValue);
+                                           " and " + checkVal);
                     }
-                    if(checker.getValue() != checkValue) {//Error detected
+                    if(checker.getValue() != checkVal) {//Error detected
                         //Do nothing
                         if(trace) {
                             System.out.println("Error detected...");
@@ -440,7 +456,7 @@ public class MyGateway {
                         if(trace) {
                             System.out.println("\nPriority: " + priority +
                                                "\nServer IP address: " + receiverAddr.toString() +
-                                               "Server port number: " + receiverPort);
+                                               "\nServer port number: " + receiverPort);
                         }
                         
                         //Check if connectionTable is full
