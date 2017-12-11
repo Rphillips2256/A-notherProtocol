@@ -30,6 +30,7 @@ public class Server {
         
         InetAddress igAddr, hostAddr;
         int igPort, hostPort, lengthOfMessage;
+        String fileName = null;
         
         byte[] wholeMsgData = null;
         String wholeMsg = null;
@@ -37,7 +38,7 @@ public class Server {
         
         CRC32 checker = new CRC32();
         byte[] msgData, ackData;
-        int connID, fileSize, seqNum, lastSeq;
+        int connID, fileSize = 0, seqNum, lastSeq;
         
         
         try {
@@ -48,7 +49,7 @@ public class Server {
             System.out.println("Server starts ...");
 
             // Create a buffer for receiving
-            byte[] receivedData = new byte[2048];
+            byte[] receivedData = new byte[1516];
             // Run forever
             while (true) {
                 // Create a datagram
@@ -71,7 +72,7 @@ public class Server {
                 }
 
                 //Establish which kind of message is being received
-                if(lengthOfMessage == 8) {                                      //Open message
+                if(lengthOfMessage > 14 && receivedData[6] != 0 && receivedData[7] != 0) {                                      //Open message
                     //Read header contents
                     //Get Connection ID
                     byte[] a = new byte[]{receivedData[0], receivedData[1]};
@@ -101,6 +102,19 @@ public class Server {
                     if(trace){
                         System.out.println("Host port number: " + hostPort);
                     }
+                    
+                    //Get file size
+                    byte[] c = new byte[]{receivedData[8], receivedData[9],
+                                            receivedData[10], receivedData[11]};
+                        ByteBuffer size = ByteBuffer.wrap(c);
+                        fileSize = size.getInt();
+                    
+                    //Get file name
+                    byte[] d = new byte[lengthOfMessage - 12];
+                    for(int i = 12; i < lengthOfMessage; i++){
+                        d[i - 12] = receivedData[i];
+                    }
+                    fileName = new String(d, 0, d.length);
                     
                     //Send ACK
                     //Create ACK data
@@ -257,10 +271,12 @@ public class Server {
                     checker.reset();
                     checker.update(ackData);
                     byte[] crcValue = new byte[4];
-                        crcValue[0] = (byte) (checker.getValue() & 0xFF);
-                        crcValue[1] = (byte) ((checker.getValue() >> 8) & 0xFF);
-                        crcValue[2] = (byte) ((checker.getValue() >> 16) & 0xFF);
-                        crcValue[3] = (byte) ((checker.getValue() >> 24));
+                        long check = checker.getValue();
+			ByteBuffer sum = ByteBuffer.allocate(4);
+			sum.putInt((int) check);
+			for(int i = 0; i < crcValue.length; i++) {
+				crcValue[i] = sum.get(i);
+			}
                     
                     //Load CRC value
                     for(int i = 0; i < 4; i++){
@@ -322,34 +338,6 @@ public class Server {
                             
                     if(trace){
                         System.out.println("Connecton ID: " + connID);
-                    }
-                    
-                    //Get type of file
-                    int type = ((receivedData[6] & 0xc0) >> 6);
-                    if(type == 1){//Bit file
-                        if(trace) {
-                            System.out.println("Bit file");
-                        }
-                    }
-                    
-                    else if(type == 2){//Txt file
-                        if(trace) {
-                            System.out.println("Txt file");
-                        }
-                    }
-                    
-                    else {
-                        System.out.println("File type not supported");
-                    }
-                    
-                    //Get size of file
-                    byte[] c = new byte[]{(byte)(receivedData[6] & 0x3f), receivedData[7]};
-                        low = c[0] >= 0 ? c[0] : 256 + c[0];
-                        high = c[1] >= 0 ? c[1] : 256 + c[1];
-                            fileSize = low | (high << 8);
-                    
-                    if(trace) {
-                        System.out.println("Size of file: " + fileSize);
                     }
                     
                     //Get SEQ number
