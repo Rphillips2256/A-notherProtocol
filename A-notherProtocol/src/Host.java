@@ -38,7 +38,8 @@ public class Host {
 		CRC32 checksum = new CRC32();
 		boolean open = false;
 		//boolean flag = true;
-		String name = "//Users/rs5644nr/Desktop/CS413/alice.txt";
+		//String name = "//Users/rs5644nr/Desktop/CS413/alice.txt";
+                String name = "//Users/rs5644nr/Desktop/CS413/alice.txt";
 
 		//TODO: make a trace function.
 
