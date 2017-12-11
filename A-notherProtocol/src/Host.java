@@ -185,14 +185,14 @@ public class Host {
 				//prepare the packets for transmission,
 				createPackets(name);
 				
-				mainDataMessage = new byte[1512];
+				mainDataMessage = new byte[1516];
 				
 				byte [] m = packet.get(packetCount);
 				long dataSum = calculateChecksum(checksum, m);
 				len = (Files.readAllBytes(Paths.get(name)).length);
-				byte [] h = new byte[12];
-				
-				h = mainHeader(conID, seq, 1500, len, dataSum);
+				byte [] h = new byte[16];
+				int currentLength = m.length;
+				h = mainHeader(gatewayAddr, conID, seq, currentLength, len, dataSum);
 				
 				int newCount = 0;
 				for(int i = 0; i < h.length; i++) {
@@ -238,10 +238,42 @@ public class Host {
 						clientSocket.send(mainData);
 						resent++;
 					}
-
-					
 				} catch (SocketTimeoutException e) {
 					System.out.println("Timeout reached: " + e);
+					
+				}
+				
+				if(packetCount == packet.size()) {
+					
+					byte [] closeHeader = new byte [12];
+					byte [] closeMess;
+					long closeCheck = 0;
+					String end = "END";
+					
+					closeMess = end.getBytes();
+					
+					closeCheck = calculateChecksum(checksum, closeMess);
+					
+					closeHeader = closeHead(gatewayAddr, addr, closeCheck);
+					
+					byte [] close = new byte[15];
+					
+					count1 = 0;
+					
+					for(int i = 0; i < closeHeader.length; i ++) {
+						close[i] = closeHeader[i];
+						count1++;
+					}
+					
+					for(int i = 0; i < closeMess.length; i++) {
+						close[i + count1] = closeMess[i];
+					}
+					
+					DatagramPacket letClose = new DatagramPacket(close, close.length, destination, gatewayPort);
+					
+					clientSocket.send(letClose);
+					
+					open = false;
 					
 				}
 				
@@ -374,18 +406,27 @@ public class Host {
 		return mess;
 	}
 	
-	public static byte [] mainHeader(int id, int seq, int dataLen, int totalSize, long check) {
-		byte [] head = new byte[12];
+	public static byte [] mainHeader(byte [] gateAdd, int id, int seq, int dataLen, int totalSize, long check) {
+		byte [] head = new byte[16];
 		int count = 0;
 		int temp = 0;
+		
+		
+		for(int i = 0; i < gateAdd.length; i++) {
+			head[i] = gateAdd[i];
+			count++;
+		}
 		
 		ByteBuffer destId = ByteBuffer.allocate(2);
 		destId.putShort((short) id);
 		
 		for(int i = 0; i < 2; i++) {
 			head[i] = destId.get(i);
-			count++;
+			temp++;
 		}
+		
+		count += temp;
+		temp = 0;
 		
 		ByteBuffer size = ByteBuffer.allocate(2);
 		size.putShort((short) totalSize);
@@ -485,6 +526,31 @@ public class Host {
 		return id;
 	}
 	
-	//TODO: trace implentation menu screen????????
-	//TODO: other menus as needed??!?!?!?!?
+	public static byte [] closeHead(byte [] gatewayIP, byte [] hostIP, long checksum) {
+		byte [] head = new byte [12];
+		
+		int count = 0;
+		int temp = 0;
+		
+		for(int i = 0; i < gatewayIP.length; i++) {
+			head[i] = gatewayIP[i];
+			count++;
+		}
+		
+		for(int i = 0; i < hostIP.length; i++) {
+			head[i + count] = hostIP[i];
+			temp++;
+		}
+		
+		count += temp;
+		temp = 0;
+		
+		ByteBuffer b = ByteBuffer.allocate(4);
+		b.putInt( (int) (checksum) );
+		for(int i = 0; i < 4; i++) {
+			head[i + count] = b.get(i);
+		}
+		
+		return head;
+	}
 }
