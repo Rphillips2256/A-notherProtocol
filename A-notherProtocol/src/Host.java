@@ -77,7 +77,7 @@ public class Host {
 			addr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 14};
 			servAddress = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
 
-			header = openHead(addr, gatewayAddr, hostPort, gatewayPort);
+			header = openHead(addr, gatewayAddr, gatewayPort, hostPort);
 
 			dataBuffer = new byte[7];
 			dataBuffer = openMess(servAddress, serverPort, desPri);
