@@ -239,28 +239,31 @@ public class MyGateway {
                             System.out.println("Message forwarded...");
                             
                             //Handle Closing ACK
-                            //Find index of Connection
-                            for(int i = 0; i < tableCount; i++){
-                                if(currConn.getId() == connectionTable[i].getId()){
-                                    index = i;
+                            String ackMessage = new String(data, 0, data.length);
+                            if(ackMessage.equals("END")){
+                                //Find index of Connection
+                                for(int i = 0; i < tableCount; i++){
+                                    if(currConn.getId() == connectionTable[i].getId()){
+                                        index = i;
+                                    }
+
+                                    else;
                                 }
-                                
-                                else;
-                            }
-                            
-                            if(trace) {
-                                System.out.println("Connection index: " + index);
-                            }
-                            
-                            //Update connectionTable
-                            for(int i = (index + 1); i < tableCount; i++){
-                                connectionTable[i - 1] = connectionTable[i];
-                            }
-                            connectionTable[--tableCount] = null;
-                            
-                            if(trace) {
-                                System.out.println("Connection deleted..." +
-                                                   "New table count: " + tableCount);
+
+                                if(trace) {
+                                    System.out.println("Connection index: " + index);
+                                }
+
+                                //Update connectionTable
+                                for(int i = (index + 1); i < tableCount; i++){
+                                    connectionTable[i - 1] = connectionTable[i];
+                                }
+                                connectionTable[--tableCount] = null;
+
+                                if(trace) {
+                                    System.out.println("Connection deleted..." +
+                                                       "New table count: " + tableCount);
+                                }
                             }
                         }
                     }
