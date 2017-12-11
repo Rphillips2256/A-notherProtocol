@@ -99,7 +99,7 @@ public class Connection {
                       "Host IP address: " + addr1 + "\n" +
                       "Host port number: " + port1 + "\n" +
                       "Server IP address: " + addr2 + "\n" +
-                      "Server port number: " + port2);
+                      "Server port number: " + port2 + "\n");
         return conn;
     }
 }
