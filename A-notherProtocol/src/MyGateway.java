@@ -117,7 +117,7 @@ public class MyGateway {
             byte[] receivedData = new byte[2048];
             // Run forever
             while (true) {
-                System.out.println("Waiting for message...");
+                System.out.println("\nWaiting for message...");
                 
                 // Create a datagram
                 DatagramPacket receivedDatagram =
@@ -126,7 +126,7 @@ public class MyGateway {
                 // Receive a datagram			
                 serverSocket.receive(receivedDatagram);
 
-                System.out.println("Message received...");
+                System.out.println("\nMessage received...");
 
                 //Open received DatagramPacket
                 senderAddr = receivedDatagram.getAddress();			
@@ -137,14 +137,14 @@ public class MyGateway {
                 if(trace) {
                        System.out.println("\nSender IP address: " + senderAddr.toString() +
                                           "\nSender port number: " + senderPort +
-                                          "\nMessage: " + message);
+                                          "\nMessage: " + message + "\n");
                 }
                 
                 //Establish which kind of message is being received
                 if(lengthOfMessage < 16) {  //ACK or close message
                     if(receivedData[6] == 0 && receivedData[7] == 0) {          //ACK message
                         if(trace) {
-                            System.out.println("ACK message received");
+                            System.out.println("\nACK message received");
                         }
                         //Read header contents
                         //Get IG's IP address
@@ -270,7 +270,7 @@ public class MyGateway {
                     
                     else {                                                      //Close message
                         if(trace) {
-                            System.out.println("Close connection message received");
+                            System.out.println("\nClose connection message received");
                         }
                         //Read header contents
                         //Get IG's IP address
@@ -413,7 +413,7 @@ public class MyGateway {
                 
                 else if(receivedData[10] == 0 && receivedData[11] == 0) {       //Open message
                    if(trace) {
-                       System.out.println("Open connection message received");
+                       System.out.println("\nOpen connection message received");
                     }
                    
                     //Read header contents
@@ -598,6 +598,10 @@ public class MyGateway {
                 }
                 
                 else {                                                          //Data message
+                    if(trace) {
+                        System.out.println("Data message received");
+                    }
+
                     //Read header contents
                     //Get IG's IP address
                     byte[] a = new byte[]{receivedData[0], receivedData[1],
