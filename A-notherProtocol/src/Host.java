@@ -145,7 +145,7 @@ public class Host {
 			byte [] cSum = new byte [4];
 
 			for(int i = 0; i < cSum.length; i++) {
-				cSum[i] = receivedHeader[i + 4];
+				cSum[i] = receivedHeader[i + 8];
 			}
 
 			out += receivedHeader.length;
