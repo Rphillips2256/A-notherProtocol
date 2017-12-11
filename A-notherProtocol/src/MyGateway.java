@@ -53,6 +53,7 @@ public class MyGateway {
         CRC32 checker = new CRC32();
         byte[] messageData;
         int connID, seqNum, lastSeq;
+        String fileName = null;
         Connection currConn = new Connection();
         
         //Stat variables
@@ -506,11 +507,22 @@ public class MyGateway {
                             low = rPort[0] >= 0 ? rPort[0] : 256 + rPort[0];
                             high = rPort[1] >= 0 ? rPort[1] : 256 + rPort[1];
                                 receiverPort = low | (high << 8);
+                        byte[] size = new byte[]{messageData[7], messageData[8],
+                                                messageData[9], messageData[10]};
+                            ByteBuffer s = ByteBuffer.wrap(size);
+                            fileSize = s.getInt();
+                        byte[] name = new byte[messageData.length - 11];
+                            for(int i = 11; i < messageData.length; i++){
+                                name[i - 11] = messageData[i];
+                            }
+                            fileName = new String(name, 0, name.length);
                                 
                         if(trace) {
                             System.out.println("\nPriority: " + priority +
                                                "\nServer IP address: " + receiverAddr.toString() +
-                                               "\nServer port number: " + receiverPort);
+                                               "\nServer port number: " + receiverPort +
+                                               "\nFile size: " + fileSize +
+                                               "\nFileName: " + fileName);
                         }
                         
                         //Check if connectionTable is full
@@ -552,7 +564,7 @@ public class MyGateway {
                         }
                             
                         // Create a buffer for sending
-                        byte[] data = new byte[8];
+                        byte[] data = new byte[12 + name.length];
                         
                         //Load connection ID
                         data[0] = (byte) (newConn.getId() & 0xFF);
@@ -582,6 +594,26 @@ public class MyGateway {
                         if(trace) {
                             System.out.println("Host port number loaded... " + 
                                                 newConn.getPort1());
+                        }
+                        
+                        //Load file size
+                        for(int i = 0; i < 4; i++){
+                            data[i + 8] = size[i];
+                        }
+                        
+                        if(trace) {
+                            System.out.println("File size loaded... " + 
+                                                fileSize);
+                        }
+                        
+                        //Load file name
+                        for(int i = 0; i < name.length; i++){
+                            data[i + 12] = name[i];
+                        }
+                        
+                        if(trace) {
+                            System.out.println("File name loaded... " + 
+                                                fileName);
                         }
 
                         // Create a datagram
@@ -622,34 +654,6 @@ public class MyGateway {
 
                     if(trace) {
                        System.out.println("Connection ID: " + connID);
-                    }
-                    
-                    //Get type of file
-                    int type = ((receivedData[6] & 0xc0) >> 6);
-                    if(type == 1){//Bit file
-                        if(trace) {
-                            System.out.println("Bit file");
-                        }
-                    }
-                    
-                    else if(type == 2){//Txt file
-                        if(trace) {
-                            System.out.println("Txt file");
-                        }
-                    }
-                    
-                    else {
-                        System.out.println("File type not supported");
-                    }
-                    
-                    //Get size of file
-                    byte[] c = new byte[]{(byte)(receivedData[6] & 0x3f), receivedData[7]};
-                        low = c[0] >= 0 ? c[0] : 256 + c[0];
-                        high = c[1] >= 0 ? c[1] : 256 + c[1];
-                            fileSize = low | (high << 8);
-                    
-                    if(trace) {
-                        System.out.println("Size of file: " + fileSize);
                     }
                     
                     //Get SEQ number
