@@ -154,7 +154,20 @@ public class Host {
 				recData[i] = receivedData[i + out];
 			}
 
-			long sumCheck = toLong(cSum);
+			//long sumCheck = toLong(cSum);
+                        
+                        ByteBuffer bb = ByteBuffer.wrap(cSum);
+                                long checkValue = bb.getInt();
+                                
+                        long checkVal = 0;
+                                
+                        if(checkValue < 0){
+                            checkVal = checkValue + 2147483647 + 2147483647 + 2;
+                        }
+
+                        else {
+                            checkVal = checkValue;
+                        }
 
 			checksum.update(recData);
 			long dataCheck = checksum.getValue();
@@ -165,7 +178,7 @@ public class Host {
 			
 			conID = getInt(gID);
 			
-			if(dataCheck == sumCheck) {
+			if(dataCheck == checkVal) {
 				
 				
 				
