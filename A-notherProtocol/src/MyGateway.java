@@ -304,6 +304,7 @@ public class MyGateway {
                         }
                         
                         //Check for errors
+                        checker.reset();
                         checker.update(messageData);
                         byte[] checkArray = new byte[]{receivedData[8], receivedData[9],
                                                         receivedData[10], receivedData[11]};
@@ -458,6 +459,7 @@ public class MyGateway {
                     }
                     
                     //Check for errors
+                    checker.reset();
                     checker.update(messageData);
                     byte[] checkArray = new byte[]{receivedData[12], receivedData[13],
                                                     receivedData[14], receivedData[15]};
