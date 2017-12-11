@@ -137,7 +137,7 @@ public class Host {
 			//split data from header
 
 			byte [] receivedHeader = new byte[12];
-			byte[] recData = new byte[receivedData.length - 12];
+			byte[] recData = new byte[receivedDatagram.getLength() - 12];
 			int out = 0;
 			for(int i = 0; i < receivedHeader.length; i++) {
 				receivedHeader[i] = receivedData[i];
