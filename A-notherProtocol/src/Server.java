@@ -141,12 +141,14 @@ public class Server {
                     //Generate CRC value
                     checker.reset();
                     checker.update(ackData);
-                    byte[] crcValue = new byte[4];
-                        crcValue[0] = (byte) (checker.getValue() & 0xFF);
-                        crcValue[1] = (byte) ((checker.getValue() >> 8) & 0xFF);
-                        crcValue[2] = (byte) ((checker.getValue() >> 16) & 0xFF);
-                        crcValue[3] = (byte) ((checker.getValue() >> 24));
-                        
+                   
+                    ByteBuffer sum = ByteBuffer.allocate(4);
+			sum.putInt((int) checker.getValue());
+			byte [] crcValue = new byte[4];
+			for(int i = 0; i < crcValue.length; i++) {
+				crcValue[i] = sum.get(i);
+			}
+                   
                     if(trace){
                         System.out.println("CRC value: " + checker.getValue());
                     }
@@ -252,6 +254,7 @@ public class Server {
                     }
                     
                     //Generate CRC value
+                    checker.reset();
                     checker.update(ackData);
                     byte[] crcValue = new byte[4];
                         crcValue[0] = (byte) (checker.getValue() & 0xFF);
@@ -376,6 +379,7 @@ public class Server {
                     }
                     
                     //Check for errors
+                    checker.reset();
                     checker.update(msgData);
                     byte[] checkArray = new byte[]{receivedData[12], receivedData[13],
                                                     receivedData[14], receivedData[15]};
@@ -462,6 +466,7 @@ public class Server {
                         }
 
                         //Generate CRC value
+                        checker.reset();
                         checker.update(ackData);
                         byte[] crcValue = new byte[4];
                             crcValue[0] = (byte) (checker.getValue() & 0xFF);

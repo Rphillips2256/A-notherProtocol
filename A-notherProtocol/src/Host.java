@@ -183,10 +183,10 @@ public class Host {
 				
 				
 				
-				String openMessage = new String(data(recData));
+				String openMessage = new String(recData, 0, recData.length);
 				System.out.println(openMessage);
 
-				if(openMessage.toUpperCase() == "ACK") {
+				if(openMessage.equals("ACK")) {
 					open = true;
 				}
 			} else {
