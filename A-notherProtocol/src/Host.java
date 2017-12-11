@@ -156,7 +156,7 @@ public class Host {
 
 			long sumCheck = toLong(cSum);
 
-			checksum.update(cSum);
+			checksum.update(recData);
 			long dataCheck = checksum.getValue();
 			byte [] gID = new byte[2];
 			for(int i = 0; i < gID.length; i++) {
