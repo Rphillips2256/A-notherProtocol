@@ -50,7 +50,7 @@ public class Host {
 		boolean open = false;
 		boolean flag = true;
 		String name = "";
-		String name1 = "/A-notherProtocol/src/alice.txt";
+		String name1 = "/Users/rs5634nr/git/A-notherProtocol/A-notherProtocol/src/alice.txt";
 		String name2 = "";
 		String name3 = "";
 
@@ -98,7 +98,7 @@ public class Host {
 
 				//Get the IG ip address and port number
 				//modify this to make it correct.
-				gatewayAddr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
+				gatewayAddr = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 61};
 
 
 
@@ -122,15 +122,16 @@ public class Host {
 				//gateway ip address
 
 
-				addr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 14};
-				servAddress = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
+				addr = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 31};//146.57.194.31
+				servAddress = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 61};
 
 				header = openHead(addr, gatewayAddr, gatewayPort, hostPort);
 				if(trace)
 					System.out.println("Building the header for the open connection.");
-				
-				dataBuffer = new byte[7];
-				dataBuffer = openMess(servAddress, serverPort, desPri);
+				dataBuffer = new byte[33];
+				byte [] total = (Files.readAllBytes(Paths.get(name)));
+				int lenTotal = total.length;
+				dataBuffer = openMess(servAddress, serverPort, desPri, lenTotal, name);
 				if(trace)
 					System.out.println("Building the data to be sent.");
 
@@ -162,7 +163,7 @@ public class Host {
 
 				//System.out.println(count1);
 				//buid the openMessage
-				message = new byte[23];
+				message = new byte[95];
 				for(int i = 0; i < header.length; i++) {
 					message[i] = header[i];
 				}
@@ -277,14 +278,14 @@ public class Host {
 					if(trace)
 						System.out.println("Checksum calculated: " + dataSum);
 					
-					len = (Files.readAllBytes(Paths.get(name)).length);
+					len = m.length;
 					
 					if(trace)
 						System.out.println("Total length of data to be sent is: " + len);
 					
 					byte [] h = new byte[16];
-					int currentLength = m.length;
-					h = mainHeader(gatewayAddr, conID, seq, currentLength, len, dataSum);
+					
+					h = mainHeader(gatewayAddr, conID, seq, len, dataSum);
 					
 					if(trace)
 						System.out.println("Header is loaded.");
@@ -310,8 +311,8 @@ public class Host {
 
 					try {
 						clientSocket.receive(receivedDatagram);
-						receivedHeader = new byte[6];
-						recData = new byte[3];
+						receivedHeader = new byte[12];
+						recData = new byte[receivedDatagram.getLength() - 12];
 						out = 0;
 						for(int i = 0; i < receivedHeader.length; i++) {
 							receivedHeader[i] = receivedData[i];
@@ -392,24 +393,6 @@ public class Host {
 		}
 	}
 
-	
-
-	public static StringBuilder data(byte [] a) {
-
-		if( a == null) 
-			return null;
-
-		StringBuilder ret = new StringBuilder();
-		int i = 0;
-		while(a[i] != 0) {
-			ret.append((char) a[i]);
-			i++;
-		}
-		return ret;
-
-
-	}
-	
 	public static long toLong(byte [] by) {
 		long c = 0;
 		
@@ -484,8 +467,26 @@ public class Host {
 		return head;
 	}
 	
-	public static byte [] openMess(byte [] servAdd, int sPort, int priority) {
-		byte [] mess = new byte[7];
+	public static byte [] openMess(byte [] servAdd, int sPort, int priority,int totalLength, String filename) {
+		byte [] mess = new byte[21];
+		
+		
+		
+		String fileName = "";
+		switch(filename) {
+		case "/Users/rs5634nr/git/A-notherProtocol/A-notherProtocol/src/alice.txt":
+			fileName = "alice.txt";
+			break;
+		case "TBD":
+			break;
+		case "TB":
+			break;
+		}
+		
+		byte [] file = fileName.getBytes();
+		int count = 0;
+		System.out.println(file.length);
+		
 		
 		
 		mess[0] = (byte) priority;
@@ -498,21 +499,40 @@ public class Host {
 		
                 servp[0] = (byte) (sPort & 0xFF);
                 servp[1] = (byte) ((sPort >> 8) & 0xFF);
+                count += 2;
 		
 		for(int i = 0; i < servAdd.length; i++) {
 			mess[i + 1] = servAdd[i];
 			newtemp++;
 		}
-
+		count += newtemp;
 		for(int i = 0; i < servp.length; i++) {
 			mess[i + newtemp] = servp[i];
+			count++;
+		}
+		
+		byte [] size = new byte[4];
+		size[0] = (byte) (totalLength & 0xFF);
+		size[1] = (byte) ((totalLength >> 8) & 0xFF);
+		size[2] = (byte) ((totalLength >> 16) & 0xFF);
+		size[3] = (byte) ((totalLength >> 24) & 0xFF);
+		
+		
+		for(int i = 0; i < size.length; i++) {
+			mess[i + count] = size[i];
+		}
+		
+		newtemp = 12;
+		
+		for(int i = 0; i < file.length; i++) {
+			mess[i + newtemp] = file[i];
 		}
 		
 		
 		return mess;
 	}
 	
-	public static byte [] mainHeader(byte [] gateAdd, int id, int seq, int dataLen, int totalSize, long check) {
+	public static byte [] mainHeader(byte [] gateAdd, int id, int seq, int dataLen, long check) {
 		byte [] head = new byte[16];
 		int count = 0;
 		int temp = 0;
@@ -574,12 +594,11 @@ public class Host {
 	     //read the file into array
 	        Path path = Paths.get(file);
 	        byte[] data = Files.readAllBytes(path);
-	        final int length = data.length;
 
 	        int position = 0;
 	        int messageSent = data.length;
 	        
-	        //create an array for the message split into 16 bytes
+	        //create an array for the message split into 1500 bytes
 	        while(data.length > position)
 	        {
 	            int byteSize = 1500;
@@ -600,7 +619,7 @@ public class Host {
 	        
 	        //increase the position by max data size bytes
 	        position = position + 1500;
-	        //decrease the position by 16 bytes
+	        //decrease the position by 1500 bytes
 	        messageSent = messageSent - 1500;
 
 	        
