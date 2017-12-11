@@ -18,6 +18,11 @@ import java.nio.file.Paths;
 
 
 public class Host {
+    
+    /*TODO
+    * Set up D_LEN to be size of data in app packet
+    * Add file type to mainHeader
+    */
 
 	static DatagramSocket clientSocket;
 	static List<byte []> packet = new ArrayList();
@@ -39,7 +44,7 @@ public class Host {
 		boolean open = false;
 		//boolean flag = true;
 		//String name = "//Users/rs5644nr/Desktop/CS413/alice.txt";
-                String name = "//Users/rs5644nr/Desktop/CS413/alice.txt";
+                String name = "C:/Users/Adam/Desktop/test1.txt";
 
 		//TODO: make a trace function.
 
@@ -222,7 +227,7 @@ public class Host {
 				
 				DatagramPacket mainData = new DatagramPacket(mainDataMessage, mainDataMessage.length, destination, gatewayPort);
 				clientSocket.send(mainData);
-				clientSocket.setSoTimeout(1000);
+				clientSocket.setSoTimeout(10000);
 				
 				try {
 					clientSocket.receive(receivedDatagram);
@@ -438,26 +443,13 @@ public class Host {
 			count++;
 		}
 		
-		ByteBuffer destId = ByteBuffer.allocate(2);
-		destId.putShort((short) id);
+                //Load ID
+		head[count++] = (byte) (id & 0xFF);
+                head[count++] = (byte) ((id >> 8) & 0xFF);
 		
-		for(int i = 0; i < 2; i++) {
-			head[i] = destId.get(i);
-			temp++;
-		}
-		
-		count += temp;
-		temp = 0;
-		
-		ByteBuffer size = ByteBuffer.allocate(2);
-		size.putShort((short) totalSize);
-		for(int i = 0; i < 2; i++) {
-			head[i + count] = size.get(i);
-			temp++;
-		}
-		
-		count += temp;
-		temp = 0;
+                //Load Size and type
+		head[temp++] = (byte) (dataLen & 0xFF);
+                head[temp++] = (byte) ((dataLen >> 8) & 0xFF);
 		
 		ByteBuffer sequence = ByteBuffer.allocate(2);
 		sequence.putShort((short) seq);
