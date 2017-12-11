@@ -27,8 +27,7 @@ public class Host {
 	static DatagramSocket clientSocket;
 	static List<byte []> packet = new ArrayList();
 	static Scanner in = new Scanner(System.in);
-	static PrintWriter write;
-
+	static PrintWriter write; 
 
 	public static void main(String [] args){
 
@@ -51,7 +50,7 @@ public class Host {
 		boolean open = false;
 		boolean flag = true;
 		String name = "";
-		String name1 = "//Users/rs5644nr/Desktop/CS413/alice.txt";
+		String name1 = "/A-notherProtocol/src/alice.txt";
 		String name2 = "";
 		String name3 = "";
 
@@ -127,14 +126,20 @@ public class Host {
 				servAddress = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
 
 				header = openHead(addr, gatewayAddr, gatewayPort, hostPort);
-
+				if(trace)
+					System.out.println("Building the header for the open connection.");
+				
 				dataBuffer = new byte[7];
 				dataBuffer = openMess(servAddress, serverPort, desPri);
+				if(trace)
+					System.out.println("Building the data to be sent.");
 
 				//do the checksum should be done last after data has been built
 				checksum.update(dataBuffer);
 				check = checksum.getValue();
-				System.out.println(check);
+				if(trace)
+					System.out.println("Running checksum on the data ... checksum is: " + check);
+				
 				ByteBuffer sum = ByteBuffer.allocate(4);
 				sum.putInt((int) check);
 				checkArray = new byte[4];
@@ -146,7 +151,7 @@ public class Host {
 
 				int temp = 0;
 				int count1 = header.length - 4;
-				System.out.println(count1);
+				//System.out.println(count1);
 
 				for(int i = 0; i < checkArray.length; i++) {
 					header[i + count1] = checkArray[i];
@@ -155,7 +160,7 @@ public class Host {
 
 				count1 += temp;
 
-				System.out.println(count1);
+				//System.out.println(count1);
 				//buid the openMessage
 				message = new byte[23];
 				for(int i = 0; i < header.length; i++) {
@@ -169,8 +174,12 @@ public class Host {
 
 				//make a packet
 				DatagramPacket nData = new DatagramPacket(message, message.length, destination, gatewayPort);
+				if(trace)
+					System.out.println("New Datagram built.");
 				//send the packet
 				clientSocket.send(nData);
+				if(trace) 
+					System.out.println("Datagram sent to IG to open the connection.");
 
 				//receive something from the IG for the connection being open
 
@@ -182,7 +191,10 @@ public class Host {
 
 				// Receive a datagram
 				clientSocket.receive(receivedDatagram);
-
+				
+				if(trace)
+					System.out.println("Datagram Receieved");
+				
 				//split data from header
 
 				byte [] receivedHeader = new byte[12];
@@ -237,25 +249,45 @@ public class Host {
 
 					if(openMessage.equals("ACK")) {
 						open = true;
+						if(trace)
+							System.out.println("Connection now open preparing to send data.");
 					}
 				} else {
 
 					clientSocket.send(nData);
-
+					if(trace)
+						System.out.println("The connection is not open resending request.");
 				}
 
 				while(open){
 					//prepare the packets for transmission,
 					createPackets(name);
+					if(trace)
+						System.out.println("File loaded into the buffer to be sent.");
 
 					mainDataMessage = new byte[1516];
 
 					byte [] m = packet.get(packetCount);
+					
+					if(trace)
+						System.out.println("Data packet loaded into the frame.");
+					
 					long dataSum = calculateChecksum(checksum, m);
+					
+					if(trace)
+						System.out.println("Checksum calculated: " + dataSum);
+					
 					len = (Files.readAllBytes(Paths.get(name)).length);
+					
+					if(trace)
+						System.out.println("Total length of data to be sent is: " + len);
+					
 					byte [] h = new byte[16];
 					int currentLength = m.length;
 					h = mainHeader(gatewayAddr, conID, seq, currentLength, len, dataSum);
+					
+					if(trace)
+						System.out.println("Header is loaded.");
 
 					int newCount = 0;
 					for(int i = 0; i < h.length; i++) {
@@ -269,7 +301,11 @@ public class Host {
 					}
 
 					DatagramPacket mainData = new DatagramPacket(mainDataMessage, mainDataMessage.length, destination, gatewayPort);
+					if(trace)
+						System.out.println("The main data message is built.");
 					clientSocket.send(mainData);
+					if(trace)
+						System.out.println("The message is sent waiting for acknowledgement.");
 					clientSocket.setSoTimeout(10000);
 
 					try {
@@ -351,6 +387,7 @@ public class Host {
 				// Close the socket 
 
 				clientSocket.close();
+				flag = false;
 			}
 		}
 	}
@@ -382,7 +419,6 @@ public class Host {
 		
 		return c;
 	}
-	//TODO: Add helper methods so that main is not cluttered
 	
 	//open message header method
 	public static byte [] openHead(byte[] hostAdd, byte [] gateAdd, int gPort, int hPort) {
