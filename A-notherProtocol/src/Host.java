@@ -169,7 +169,8 @@ public class Host {
                             checkVal = checkValue;
                         }
 
-			checksum.update(recData);
+			checksum.reset();
+                        checksum.update(recData);
 			long dataCheck = checksum.getValue();
 			byte [] gID = new byte[2];
 			for(int i = 0; i < gID.length; i++) {
