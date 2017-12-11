@@ -545,11 +545,11 @@ public class Host {
 		
                 //Load ID
 		head[count++] = (byte) (id & 0xFF);
-                head[count++] = (byte) ((id >> 8) & 0xFF);
+        head[count++] = (byte) ((id >> 8) & 0xFF);
 		
-                //Load Size and type
-		head[temp++] = (byte) (dataLen & 0xFF);
-                head[temp++] = (byte) ((dataLen >> 8) & 0xFF);
+        head[count++] = (byte) 0;//padding
+        head[count++] = (byte) 0;//padding
+		
 		
 		ByteBuffer sequence = ByteBuffer.allocate(2);
 		sequence.putShort((short) seq);
@@ -561,15 +561,8 @@ public class Host {
 		count += temp;
 		temp = 0;
 		
-		ByteBuffer dLen = ByteBuffer.allocate(2);
-		dLen.putShort((short) dataLen);
-		for(int i = 0; i < 2; i++) {
-			head[i + count] = dLen.get(i);
-			temp++;
-		}
-		
-		count += temp;
-		temp = 0;
+		head[count++] = (byte) (dataLen & 0xFF);
+        head[count++] = (byte) ((dataLen >> 8) & 0xFF);
 		
 		ByteBuffer cs = ByteBuffer.allocate(4);
 		cs.putInt((int) check);
