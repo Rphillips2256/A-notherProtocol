@@ -114,7 +114,7 @@ public class MyGateway {
             System.out.println("Gateway starts...");
 
             // Create a buffer for receiving
-            byte[] receivedData = new byte[2048];
+            byte[] receivedData = new byte[1516];
             // Run forever
             while (true) {
                 System.out.println("\nWaiting for message...");
