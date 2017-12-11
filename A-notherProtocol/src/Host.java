@@ -74,7 +74,7 @@ public class Host {
 			//gateway ip address
 
 
-			addr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 1};
+			addr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 14};
 			servAddress = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
 
 			header = openHead(addr, gatewayAddr, hostPort, gatewayPort);
@@ -368,8 +368,14 @@ public class Host {
 		temp = 0;
 
 		//add in host port
+                
+                byte[] hostp = new byte[2];
+                
+                hostp[0] = (byte) (hPort & 0xFF);
+                hostp[1] = (byte) ((hPort >> 8) & 0xFF);
+                
 		for(int i = 0; i < portArray.length; i++) {
-			head[i + count] = portArray[i];
+			head[i + count] = hostp[i];
 			temp++;
 		}
 		count += temp;
