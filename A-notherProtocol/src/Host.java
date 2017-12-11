@@ -50,7 +50,7 @@ public class Host {
 
 			//Get the IG ip address and port number
 			//modify this to make it correct.
-			gatewayAddr = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 238};
+			gatewayAddr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
 
 
 
@@ -74,8 +74,8 @@ public class Host {
 			//gateway ip address
 
 
-			addr = new byte[] {(byte)146, (byte) 57, (byte) 194, (byte) 32};
-			servAddress = new byte[] {(byte) 0, (byte) 0, (byte) 0, (byte) 0};
+			addr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 1};
+			servAddress = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
 
 			header = openHead(addr, gatewayAddr, hostPort, gatewayPort);
 
@@ -389,12 +389,12 @@ public class Host {
 		ByteBuffer servPort = ByteBuffer.allocate(2);
 		servPort.putShort((short) sPort);
 		byte [] servp = new byte [2];
-		for(int i = 0; i < servp.length; i++) {
-			servp[i] = servPort.get(i);
-		}
 		
-		for(int i = 1; i < servAdd.length; i++) {
-			mess[i] = servAdd[i];
+                servp[0] = (byte) (sPort & 0xFF);
+                servp[1] = (byte) ((sPort >> 8) & 0xFF);
+		
+		for(int i = 0; i < servAdd.length; i++) {
+			mess[i + 1] = servAdd[i];
 			newtemp++;
 		}
 
