@@ -26,6 +26,9 @@ public class Host {
 
 	static DatagramSocket clientSocket;
 	static List<byte []> packet = new ArrayList();
+	static Scanner in = new Scanner(System.in);
+	static PrintWriter write;
+
 
 	public static void main(String [] args){
 
@@ -38,276 +41,317 @@ public class Host {
 		byte [] header;
 		byte [] mainDataMessage;
 		int desPri = 0, gatewayPort, serverPort, hostPort, conID;
+		int appCount = 0;
+		int choice = 0;
+		int timeout = 0;
+		boolean trace = false;
 		int packetCount = 0, resent = 0, seq = 0, len = 0;
 		long check;
 		CRC32 checksum = new CRC32();
 		boolean open = false;
-		//boolean flag = true;
-		//String name = "//Users/rs5644nr/Desktop/CS413/alice.txt";
-                String name = "C:/Users/Adam/Desktop/test1.txt";
+		boolean flag = true;
+		String name = "";
+		String name1 = "//Users/rs5644nr/Desktop/CS413/alice.txt";
+		String name2 = "";
+		String name3 = "";
 
-		//TODO: make a trace function.
+		while(flag) {
+			
+			System.out.print(menu());
+			choice = in.nextInt();
+			
+			switch(choice) {
+			case 1: 
+				trace = true;
+				break;
+			case 2:
+				trace = false;
+				break;
+			default:
+				System.out.println("invalid choice");
+				break;
+			}
+			
+			System.out.print(nextMenu());
+			choice = in.nextInt();
+			
+			
+			switch(choice) {
+			case 1:
+				name = name1;
+				break;
+			case 2:
+				name = name2;
+				break;
+			case 3:
+				name = name3;
+				break;
+			default:
+				System.out.println("Invalid Choice try again.");
+				break;
+			}
 
 
-		try {
-
-			// Open a UDP datagram socket
-			clientSocket = new DatagramSocket();
-
-			//Get the IG ip address and port number
-			//modify this to make it correct.
-			gatewayAddr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
-
-
-
-			InetAddress address = null;
 			try {
-				address = InetAddress.getByAddress(gatewayAddr);
-			} catch (UnknownHostException impossible) {
-				System.out.println("Unable to determine the host by address!");
-			}
-			InetAddress destination = address;
+
+				// Open a UDP datagram socket
+				clientSocket = new DatagramSocket();
+
+				//Get the IG ip address and port number
+				//modify this to make it correct.
+				gatewayAddr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
 
 
 
-			// Determine server port number, gateway and host.
-			//subject to change to an input type of method
-			gatewayPort = 58989;
-			serverPort = 18987;
-			hostPort = clientSocket.getLocalPort();
-
-			//Prep the open connection message starting with prepping data for header and actual message.
-			//gateway ip address
-
-
-			addr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 14};
-			servAddress = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
-
-			header = openHead(addr, gatewayAddr, gatewayPort, hostPort);
-
-			dataBuffer = new byte[7];
-			dataBuffer = openMess(servAddress, serverPort, desPri);
-
-			//do the checksum should be done last after data has been built
-			checksum.update(dataBuffer);
-			check = checksum.getValue();
-			System.out.println(check);
-			ByteBuffer sum = ByteBuffer.allocate(4);
-			sum.putInt((int) check);
-			checkArray = new byte[4];
-			for(int i = 0; i < checkArray.length; i++) {
-				checkArray[i] = sum.get(i);
-			}
-
-			//build the rest of the the header and build entire packet.
-
-			int temp = 0;
-			int count1 = header.length - 4;
-			System.out.println(count1);
-
-			for(int i = 0; i < checkArray.length; i++) {
-				header[i + count1] = checkArray[i];
-				temp++;
-			}
-
-			count1 += temp;
-
-			System.out.println(count1);
-			//buid the openMessage
-			message = new byte[23];
-			for(int i = 0; i < header.length; i++) {
-				message[i] = header[i];
-			}
-
-			for(int i = 0; i < dataBuffer.length; i++) {
-				message[i + header.length] = dataBuffer[i];
-			}
-
-
-			//make a packet
-			DatagramPacket nData = new DatagramPacket(message, message.length, destination, gatewayPort);
-			//send the packet
-			clientSocket.send(nData);
-
-			//receive something from the IG for the connection being open
-
-			byte[] receivedData = new byte[2048];
-
-			// Create a datagram
-			DatagramPacket receivedDatagram = 
-					new DatagramPacket(receivedData, receivedData.length);
-
-			// Receive a datagram
-			clientSocket.receive(receivedDatagram);
-
-			//split data from header
-
-			byte [] receivedHeader = new byte[12];
-			byte[] recData = new byte[receivedDatagram.getLength() - 12];
-			int out = 0;
-			for(int i = 0; i < receivedHeader.length; i++) {
-				receivedHeader[i] = receivedData[i];
-			}
-			byte [] cSum = new byte [4];
-
-			for(int i = 0; i < cSum.length; i++) {
-				cSum[i] = receivedHeader[i + 8];
-			}
-
-			out += receivedHeader.length;
-
-			for(int i = 0; i < recData.length; i++) {
-				recData[i] = receivedData[i + out];
-			}
-
-			//long sumCheck = toLong(cSum);
-                        
-                        ByteBuffer bb = ByteBuffer.wrap(cSum);
-                                long checkValue = bb.getInt();
-                                
-                        long checkVal = 0;
-                                
-                        if(checkValue < 0){
-                            checkVal = checkValue + 2147483647 + 2147483647 + 2;
-                        }
-
-                        else {
-                            checkVal = checkValue;
-                        }
-
-			checksum.reset();
-                        checksum.update(recData);
-			long dataCheck = checksum.getValue();
-			byte [] gID = new byte[2];
-			for(int i = 0; i < gID.length; i++) {
-				gID[i] = receivedHeader[i];
-			}
-			
-			conID = getInt(gID);
-			
-			if(dataCheck == checkVal) {
-				
-				
-				
-				String openMessage = new String(recData, 0, recData.length);
-				System.out.println(openMessage);
-
-				if(openMessage.equals("ACK")) {
-					open = true;
+				InetAddress address = null;
+				try {
+					address = InetAddress.getByAddress(gatewayAddr);
+				} catch (UnknownHostException impossible) {
+					System.out.println("Unable to determine the host by address!");
 				}
-			} else {
+				InetAddress destination = address;
 
+
+
+				// Determine server port number, gateway and host.
+				//subject to change to an input type of method
+				gatewayPort = 58989;
+				serverPort = 18987;
+				hostPort = clientSocket.getLocalPort();
+
+				//Prep the open connection message starting with prepping data for header and actual message.
+				//gateway ip address
+
+
+				addr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 14};
+				servAddress = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
+
+				header = openHead(addr, gatewayAddr, gatewayPort, hostPort);
+
+				dataBuffer = new byte[7];
+				dataBuffer = openMess(servAddress, serverPort, desPri);
+
+				//do the checksum should be done last after data has been built
+				checksum.update(dataBuffer);
+				check = checksum.getValue();
+				System.out.println(check);
+				ByteBuffer sum = ByteBuffer.allocate(4);
+				sum.putInt((int) check);
+				checkArray = new byte[4];
+				for(int i = 0; i < checkArray.length; i++) {
+					checkArray[i] = sum.get(i);
+				}
+
+				//build the rest of the the header and build entire packet.
+
+				int temp = 0;
+				int count1 = header.length - 4;
+				System.out.println(count1);
+
+				for(int i = 0; i < checkArray.length; i++) {
+					header[i + count1] = checkArray[i];
+					temp++;
+				}
+
+				count1 += temp;
+
+				System.out.println(count1);
+				//buid the openMessage
+				message = new byte[23];
+				for(int i = 0; i < header.length; i++) {
+					message[i] = header[i];
+				}
+
+				for(int i = 0; i < dataBuffer.length; i++) {
+					message[i + header.length] = dataBuffer[i];
+				}
+
+
+				//make a packet
+				DatagramPacket nData = new DatagramPacket(message, message.length, destination, gatewayPort);
+				//send the packet
 				clientSocket.send(nData);
 
+				//receive something from the IG for the connection being open
+
+				byte[] receivedData = new byte[2048];
+
+				// Create a datagram
+				DatagramPacket receivedDatagram = 
+						new DatagramPacket(receivedData, receivedData.length);
+
+				// Receive a datagram
+				clientSocket.receive(receivedDatagram);
+
+				//split data from header
+
+				byte [] receivedHeader = new byte[12];
+				byte[] recData = new byte[receivedDatagram.getLength() - 12];
+				int out = 0;
+				for(int i = 0; i < receivedHeader.length; i++) {
+					receivedHeader[i] = receivedData[i];
+				}
+				byte [] cSum = new byte [4];
+
+				for(int i = 0; i < cSum.length; i++) {
+					cSum[i] = receivedHeader[i + 8];
+				}
+
+				out += receivedHeader.length;
+
+				for(int i = 0; i < recData.length; i++) {
+					recData[i] = receivedData[i + out];
+				}
+
+				//long sumCheck = toLong(cSum);
+
+				ByteBuffer bb = ByteBuffer.wrap(cSum);
+				long checkValue = bb.getInt();
+
+				long checkVal = 0;
+
+				if(checkValue < 0){
+					checkVal = checkValue + 2147483647 + 2147483647 + 2;
+				}
+
+				else {
+					checkVal = checkValue;
+				}
+
+				checksum.reset();
+				checksum.update(recData);
+				long dataCheck = checksum.getValue();
+				byte [] gID = new byte[2];
+				for(int i = 0; i < gID.length; i++) {
+					gID[i] = receivedHeader[i];
+				}
+
+				conID = getInt(gID);
+
+				if(dataCheck == checkVal) {
+
+
+
+					String openMessage = new String(recData, 0, recData.length);
+					System.out.println(openMessage);
+
+					if(openMessage.equals("ACK")) {
+						open = true;
+					}
+				} else {
+
+					clientSocket.send(nData);
+
+				}
+
+				while(open){
+					//prepare the packets for transmission,
+					createPackets(name);
+
+					mainDataMessage = new byte[1516];
+
+					byte [] m = packet.get(packetCount);
+					long dataSum = calculateChecksum(checksum, m);
+					len = (Files.readAllBytes(Paths.get(name)).length);
+					byte [] h = new byte[16];
+					int currentLength = m.length;
+					h = mainHeader(gatewayAddr, conID, seq, currentLength, len, dataSum);
+
+					int newCount = 0;
+					for(int i = 0; i < h.length; i++) {
+
+						mainDataMessage[i] = h[i];
+						newCount++;
+					}
+
+					for(int i = 0; i < m.length; i++) {
+						mainDataMessage[i + newCount] = m[i];
+					}
+
+					DatagramPacket mainData = new DatagramPacket(mainDataMessage, mainDataMessage.length, destination, gatewayPort);
+					clientSocket.send(mainData);
+					clientSocket.setSoTimeout(10000);
+
+					try {
+						clientSocket.receive(receivedDatagram);
+						receivedHeader = new byte[6];
+						recData = new byte[3];
+						out = 0;
+						for(int i = 0; i < receivedHeader.length; i++) {
+							receivedHeader[i] = receivedData[i];
+						}
+						cSum = new byte [4];
+
+						for(int i = 0; i < cSum.length; i++) {
+							cSum[i] = receivedHeader[i + 4];
+						}
+
+						out += receivedHeader.length;
+
+						for(int i = 0; i < recData.length; i++) {
+							recData[i] = receivedData[i + out];
+						}
+
+						int curr = getInt(recData);
+
+						if(curr == conID) {
+							packetCount++;
+							seq++;
+						} else {
+							clientSocket.send(mainData);
+							resent++;
+						}
+					} catch (SocketTimeoutException e) {
+						System.out.println("Timeout reached: " + e);
+
+					}
+
+					if(packetCount == packet.size()) {
+
+						byte [] closeHeader = new byte [12];
+						byte [] closeMess;
+						long closeCheck = 0;
+						String end = "END";
+
+						closeMess = end.getBytes();
+
+						closeCheck = calculateChecksum(checksum, closeMess);
+
+						closeHeader = closeHead(gatewayAddr, addr, closeCheck);
+
+						byte [] close = new byte[15];
+
+						count1 = 0;
+
+						for(int i = 0; i < closeHeader.length; i ++) {
+							close[i] = closeHeader[i];
+							count1++;
+						}
+
+						for(int i = 0; i < closeMess.length; i++) {
+							close[i + count1] = closeMess[i];
+						}
+
+						DatagramPacket letClose = new DatagramPacket(close, close.length, destination, gatewayPort);
+
+						clientSocket.send(letClose);
+
+						open = false;
+
+					}
+
+				}
+
 			}
 
-			while(open){
-				//prepare the packets for transmission,
-				createPackets(name);
-				
-				mainDataMessage = new byte[1516];
-				
-				byte [] m = packet.get(packetCount);
-				long dataSum = calculateChecksum(checksum, m);
-				len = (Files.readAllBytes(Paths.get(name)).length);
-				byte [] h = new byte[16];
-				int currentLength = m.length;
-				h = mainHeader(gatewayAddr, conID, seq, currentLength, len, dataSum);
-				
-				int newCount = 0;
-				for(int i = 0; i < h.length; i++) {
-					
-					mainDataMessage[i] = h[i];
-					newCount++;
-				}
-				
-				for(int i = 0; i < m.length; i++) {
-					mainDataMessage[i + newCount] = m[i];
-				}
-				
-				DatagramPacket mainData = new DatagramPacket(mainDataMessage, mainDataMessage.length, destination, gatewayPort);
-				clientSocket.send(mainData);
-				clientSocket.setSoTimeout(10000);
-				
-				try {
-					clientSocket.receive(receivedDatagram);
-					receivedHeader = new byte[6];
-					recData = new byte[3];
-					out = 0;
-					for(int i = 0; i < receivedHeader.length; i++) {
-						receivedHeader[i] = receivedData[i];
-					}
-					cSum = new byte [4];
+			catch (IOException ioEx) {
+				ioEx.printStackTrace();
+			} 
+			finally {
+				// Close the socket 
 
-					for(int i = 0; i < cSum.length; i++) {
-						cSum[i] = receivedHeader[i + 4];
-					}
-
-					out += receivedHeader.length;
-
-					for(int i = 0; i < recData.length; i++) {
-						recData[i] = receivedData[i + out];
-					}
-					
-					int curr = getInt(recData);
-					
-					if(curr == conID) {
-						packetCount++;
-						seq++;
-					} else {
-						clientSocket.send(mainData);
-						resent++;
-					}
-				} catch (SocketTimeoutException e) {
-					System.out.println("Timeout reached: " + e);
-					
-				}
-				
-				if(packetCount == packet.size()) {
-					
-					byte [] closeHeader = new byte [12];
-					byte [] closeMess;
-					long closeCheck = 0;
-					String end = "END";
-					
-					closeMess = end.getBytes();
-					
-					closeCheck = calculateChecksum(checksum, closeMess);
-					
-					closeHeader = closeHead(gatewayAddr, addr, closeCheck);
-					
-					byte [] close = new byte[15];
-					
-					count1 = 0;
-					
-					for(int i = 0; i < closeHeader.length; i ++) {
-						close[i] = closeHeader[i];
-						count1++;
-					}
-					
-					for(int i = 0; i < closeMess.length; i++) {
-						close[i + count1] = closeMess[i];
-					}
-					
-					DatagramPacket letClose = new DatagramPacket(close, close.length, destination, gatewayPort);
-					
-					clientSocket.send(letClose);
-					
-					open = false;
-					
-				}
-				
+				clientSocket.close();
 			}
-
-		}
-
-		catch (IOException ioEx) {
-			ioEx.printStackTrace();
-		} 
-		finally {
-			// Close the socket 
-
-			clientSocket.close();
 		}
 	}
 
@@ -565,5 +609,20 @@ public class Host {
 		}
 		
 		return head;
+	}
+	public static String menu() {
+		
+		return "Welcome to the File Transfer\n" +
+		"Please Select from the following: \n" + 
+		"1 --------------- To turn on the trace.\n" +
+		"2 --------------- To run without the trace.\n";
+		
+	}
+	
+	public static String nextMenu() {
+		return "Please select from the following\n" +
+			   "1 -------------- To send Alice.txt\n" +
+			   "2 -------------- To send this file\n" +
+			   "3 -------------- To send this file\n";
 	}
 }
