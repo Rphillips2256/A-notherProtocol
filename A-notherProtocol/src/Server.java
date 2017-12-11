@@ -139,12 +139,17 @@ public class Server {
                     }
                     
                     //Generate CRC value
+                    checker.reset();
                     checker.update(ackData);
                     byte[] crcValue = new byte[4];
                         crcValue[0] = (byte) (checker.getValue() & 0xFF);
                         crcValue[1] = (byte) ((checker.getValue() >> 8) & 0xFF);
                         crcValue[2] = (byte) ((checker.getValue() >> 16) & 0xFF);
                         crcValue[3] = (byte) ((checker.getValue() >> 24));
+                        
+                    if(trace){
+                        System.out.println("CRC value: " + checker.getValue());
+                    }
                     
                     //Load CRC value
                     for(int i = 0; i < 4; i++){
