@@ -31,8 +31,13 @@ public class MyGateway {
     public static void main(String [] args){
         
         boolean trace = true;
+        boolean log = false;
+        int errorRate = 0, oneRate = 0, twoRate = 0;
         
         Random random = new Random();
+        Scanner console = new Scanner(System.in);
+        int input = -1;
+        String inTemp = "";
         
         int tableSize = 10;
         int tableCount = 0;
@@ -56,6 +61,50 @@ public class MyGateway {
         int appCount, udpCount;
         int rtMax;
         
+/*        
+        //User options
+        while(input == -1){
+            System.out.print("Enter desired error rate: ");
+                input = console.nextInt();
+                
+                if(input < 0 || input > 100){
+                    input = -1;
+                }
+                
+                else {
+                    errorRate = input;
+                }
+        }
+            input = -1;
+        
+        while(input == -1){
+            System.out.print("Enter desired one-bit error rate: ");
+                input = console.nextInt();
+                
+                if(input < 0 || input > 100){
+                    input = -1;
+                }
+                
+                else {
+                    oneRate = input;
+                }
+        }
+            input = -1;
+            
+        while(input == -1){
+            System.out.print("Enter desired two-bit error rate: ");
+                input = console.nextInt();
+                
+                if(input < 0 || input > 100 || (input + oneRate) > 100){
+                    input = -1;
+                }
+                
+                else {
+                    errorRate = input;
+                }
+        }
+            input = -1;
+*/        
         
         try {
             // Open a UDP datagram socket with a specified port number
@@ -120,7 +169,7 @@ public class MyGateway {
                         //Read data
                         messageData = new byte[lengthOfMessage - 12];
                         for(int i = 12; i < lengthOfMessage; i++) {
-                            messageData[i] = receivedData[i];
+                            messageData[i - 12] = receivedData[i];
                         }
 
                         if(trace) {
@@ -493,7 +542,7 @@ public class MyGateway {
                             connectionTable[tableCount++] = newConn;
                         
                         if(trace) {
-                            System.out.println("Connection " + (tableCount - 1) +
+                            System.out.println("\nConnection " + (tableCount - 1) +
                                                "\n" + newConn.toString());
                         }
                             
