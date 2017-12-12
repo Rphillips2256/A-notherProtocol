@@ -17,10 +17,7 @@ import java.util.zip.CRC32;
 public class MyGateway {
 
     /*TODO
-    * Error generation
-    * Stat display
     * Log to file
-    * Priority support
     */
 	
     static DatagramSocket serverSocket;
@@ -32,12 +29,12 @@ public class MyGateway {
         
         boolean trace = true;
         boolean log = false;
+        boolean lost = false;
         int errorRate = 0, oneRate = 0, twoRate = 0;
         
         Random random = new Random();
         Scanner console = new Scanner(System.in);
         int input = -1;
-        String inTemp = "";
         
         int tableSize = 10;
         int tableCount = 0;
@@ -52,17 +49,18 @@ public class MyGateway {
         
         CRC32 checker = new CRC32();
         byte[] messageData;
-        int connID, seqNum, lastSeq;
+        int connID, seqNum;
         String fileName = null;
         Connection currConn = new Connection();
         
         //Stat variables
-        int fileSize;
+        int fileSize = 0;
         long endTime;
-        int appCount, udpCount;
-        int rtMax;
+        String last = "";
+        int appCount = 0, udpCount = 0;
+        int rtMax = 0,rtCount = 0, resent = 0;
         
-/*        
+        
         //User options
         while(input == -1){
             System.out.print("Enter desired error rate: ");
@@ -101,11 +99,11 @@ public class MyGateway {
                 }
                 
                 else {
-                    errorRate = input;
+                    twoRate = input;
                 }
         }
             input = -1;
-*/        
+        
         
         try {
             // Open a UDP datagram socket with a specified port number
@@ -128,6 +126,9 @@ public class MyGateway {
                 serverSocket.receive(receivedDatagram);
 
                 System.out.println("\nMessage received...");
+                
+                //Increment UDP count
+                udpCount++;
 
                 //Open received DatagramPacket
                 senderAddr = receivedDatagram.getAddress();			
@@ -135,11 +136,28 @@ public class MyGateway {
                 lengthOfMessage = receivedDatagram.getLength();			
                 String message = new String(receivedData, 0, receivedDatagram.getLength());
                 
+                //Check for duplicate
+                if(last.equals(message)){
+                    resent++;
+                    rtCount++;
+                }
+                else {
+                    appCount++;
+                    
+                    if(rtCount > rtMax){
+                        rtMax = rtCount;
+                    }
+                    rtCount = 0;
+                }
+                
                 if(trace) {
                        System.out.println("\nSender IP address: " + senderAddr.toString() +
                                           "\nSender port number: " + senderPort +
                                           "\nMessage: " + message + "\n");
                 }
+                
+                //Reset lost
+                lost = false;
                 
                 //Establish which kind of message is being received
                 if(lengthOfMessage < 16) {  //ACK or close message
@@ -177,6 +195,43 @@ public class MyGateway {
                             String tempMsg = new String(messageData, 0, messageData.length);
                             
                             System.out.println("Message: " + tempMsg);
+                        }
+                        
+                        //Generate errors
+                        if(random.nextInt(100) < errorRate){//Error occurred
+                            int error = random.nextInt(100);
+                            
+                            if(error < oneRate){//One bit error
+                                int pos = random.nextInt(messageData.length - 1);
+                                int bit = random.nextInt(7);
+                                
+                                messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                                
+                                if(trace){
+                                    System.out.println("One bit error...");
+                                }
+                                    
+                            }
+                            
+                            else if(error < (twoRate + oneRate)){//Two bit error
+                                int pos = random.nextInt(messageData.length - 1);
+                                int bit = random.nextInt(7);
+                                
+                                messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                                
+                                pos = random.nextInt(messageData.length - 1);
+                                bit = random.nextInt(7);
+                                
+                                messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                                
+                                if(trace){
+                                    System.out.println("Two bit error...");
+                                }
+                            }
+                            
+                            else{//Lost packet
+                                lost = true;
+                            }
                         }
                         
                         //Forward message
@@ -222,8 +277,11 @@ public class MyGateway {
                             byte[] data = new byte[lengthOfMessage];
                             
                             //Copy data
-                            for(int i = 0; i < lengthOfMessage; i++){
+                            for(int i = 0; i < 12; i++){
                                 data[i] = receivedData[i];
+                            }
+                            for(int i = 0; i < messageData.length; i++){
+                                data[i + 12] = messageData[i];
                             }
                             
                             // Create a datagram
@@ -234,14 +292,37 @@ public class MyGateway {
                                 System.out.println("Message sent: " + Arrays.toString(data));
                             }
 
-                            //Send datagram to Host			
-                            serverSocket.send(datagram);
+                            //Send datagram			
+                            if(!lost){
+                                serverSocket.send(datagram);
+                                
+                                System.out.println("Message forwarded...");
+                            }
 
-                            System.out.println("Message forwarded...");
+                            if(lost){
+                                System.out.println("Packet lost...");
+                            }
                             
                             //Handle Closing ACK
-                            String ackMessage = new String(data, 0, data.length);
+                            String ackMessage = new String(messageData, 0, messageData.length);
                             if(ackMessage.equals("END")){
+                                //Calculate stats
+                                endTime = (System.currentTimeMillis() - currConn.getStartTime());
+                                double expRT = (errorRate / (100 - errorRate));
+                                double perRT = ((resent / udpCount) * 100);
+
+                                //Display Stats
+                                System.out.println( "        Transfer Statistics\n" +
+                                                    "Size of file: " + fileSize + "\n" +
+                                                    "Transfer time: "+ endTime + "\n" +
+                                                    "Application messages: " + appCount + "\n" +
+                                                    "UDP datagrams: " + udpCount + "\n" +
+                                                    "Retransmissions: " + resent + "\n" +
+                                                    "Expected retransmissions: " + expRT + "\n" +
+                                                    "Max retransmissions: " + rtMax + "\n" +
+                                                    "Retransmission percentage: " + perRT);
+                                
+
                                 //Find index of Connection
                                 for(int i = 0; i < tableCount; i++){
                                     if(currConn.getId() == connectionTable[i].getId()){
@@ -252,7 +333,7 @@ public class MyGateway {
                                 }
 
                                 if(trace) {
-                                    System.out.println("Connection index: " + index);
+                                    System.out.println("\n\nConnection index: " + index);
                                 }
 
                                 //Update connectionTable
@@ -270,6 +351,7 @@ public class MyGateway {
                     }
                     
                     else {                                                      //Close message
+                        last = message;
                         if(trace) {
                             System.out.println("\nClose connection message received");
                         }
@@ -414,7 +496,8 @@ public class MyGateway {
                 }
                 
                 else if(receivedData[10] == 0 && receivedData[11] == 0) {       //Open message
-                   if(trace) {
+                    last = message;
+                    if(trace) {
                        System.out.println("\nOpen connection message received");
                     }
                    
@@ -556,11 +639,17 @@ public class MyGateway {
                         newConn.setPort1(senderPort);
                         newConn.setAddr2(receiverAddr);
                         newConn.setPort2(receiverPort);
+                        newConn.setStartTime(System.currentTimeMillis());
                             connectionTable[tableCount++] = newConn;
                         
                         if(trace) {
                             System.out.println("\nConnection " + (tableCount - 1) +
                                                "\n" + newConn.toString());
+                        }
+                        
+                        //Priority given to more important connection
+                        if(newConn.getPriority() > currConn.getPriority()){
+                            currConn = newConn;
                         }
                             
                         // Create a buffer for sending
@@ -632,6 +721,7 @@ public class MyGateway {
                 }
                 
                 else {                                                          //Data message
+                    last = message;
                     if(trace) {
                         System.out.println("Data message received");
                     }
@@ -683,7 +773,42 @@ public class MyGateway {
                     }
                     
                     //Generate errors
-                                                                                ///////////////////////////////////////////////////////////////////
+                    if(random.nextInt(100) < errorRate){//Error occurred
+                        int error = random.nextInt(100);
+
+                        if(error < oneRate){//One bit error
+                            int pos = random.nextInt(messageData.length - 1);
+                            int bit = random.nextInt(7);
+
+                            messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                            
+                            if(trace){
+                                System.out.println("One bit error...");
+                            }
+                        }
+
+                        else if(error < (twoRate + oneRate)){//Two bit error
+                            int pos = random.nextInt(messageData.length - 1);
+                            int bit = random.nextInt(7);
+
+                            messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+
+                            pos = random.nextInt(messageData.length - 1);
+                            bit = random.nextInt(7);
+
+                            messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                            
+                            if(trace){
+                                System.out.println("Two bit error...");
+                            }
+                        }
+
+                        else{//Lost packet
+                            lost = true;
+                        }
+                    }
+                    
+                    
                     //Forward message
                     //Find Connection in connectionTable
                     boolean match = false;
@@ -727,8 +852,11 @@ public class MyGateway {
                         byte[] data = new byte[lengthOfMessage];
 
                         //Copy data
-                        for(int i = 0; i < lengthOfMessage; i++){
+                        for(int i = 0; i < 16; i++){
                             data[i] = receivedData[i];
+                        }
+                        for(int i = 0; i < messageData.length; i++){
+                            data[i + 16] = messageData[i];
                         }
 
                         // Create a datagram
@@ -739,10 +867,16 @@ public class MyGateway {
                             System.out.println("Message sent: " + Arrays.toString(data));
                         }
 
-                        //Send datagram to Server			
-                        serverSocket.send(datagram);
+                        //Send datagram			
+                        if(!lost){
+                            serverSocket.send(datagram);
+                            
+                            System.out.println("Message forwarded...");
+                        }
 
-                        System.out.println("Message forwarded...");
+                        if(lost){
+                            System.out.println("Packet lost...");
+                        }
                     }
                 }
             }
