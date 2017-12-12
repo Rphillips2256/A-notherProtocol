@@ -369,6 +369,10 @@ public class Server {
                     //Check for errors
                     checker.reset();
                     checker.update(msgData);
+                    if(trace){
+                        System.out.println("Calculated CRC: " + checker.getValue());
+                    }
+                    
                     byte[] checkArray = new byte[]{receivedData[12], receivedData[13],
                                                     receivedData[14], receivedData[15]};
                         ByteBuffer bb = ByteBuffer.wrap(checkArray);
@@ -472,7 +476,7 @@ public class Server {
                         }
 
                         //Load ACK data
-                        for(int i = 0; i < 3; i++){
+                        for(int i = 0; i < 2; i++){
                             data[i + 12] = ackData[i];
                         }
 
