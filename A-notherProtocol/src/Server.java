@@ -16,7 +16,6 @@ import java.util.zip.CRC32;
 public class Server {
     
     /*TODO
-    * Figure out lastSeq
     * Write to file
     */
 	
