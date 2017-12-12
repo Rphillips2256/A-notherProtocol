@@ -52,7 +52,7 @@ public class Host {
 		String name = "";
 		String name1 = "/Users/rs5634nr/git/A-notherProtocol/A-notherProtocol/src/alice.txt";
 		String name2 = "C:/Users/Adam/Desktop/test1.txt";
-		String name3 = "";
+		String name3 = "C:/Users/Adam/Desktop/alice.txt";
                 String fileName = "";
 
 		while(flag) {
@@ -135,6 +135,9 @@ public class Host {
 				dataBuffer = new byte[11 + fileName.length()];
 				byte [] total = (Files.readAllBytes(Paths.get(name)));
 				int lenTotal = total.length;
+                                if(trace)
+					System.out.println("Size of file: " + lenTotal);
+                                
 				dataBuffer = openMess(servAddress, serverPort, desPri, lenTotal, fileName);
 				if(trace)
 					System.out.println("Building the data to be sent.");
@@ -166,7 +169,7 @@ public class Host {
 				count1 += temp;
 
 				//System.out.println(count1);
-				//buid the openMessage
+				//build the openMessage
 				message = new byte[header.length + dataBuffer.length];
 				for(int i = 0; i < header.length; i++) {
 					message[i] = header[i];
@@ -266,12 +269,14 @@ public class Host {
 					if(trace)
 						System.out.println("The connection is not open resending request.");
 				}
+                                
+                                //prepare the packets for transmission,
+                                createPackets(name);
+                                    if(trace)
+                                        System.out.println("File loaded into the buffer to be sent.");
 
 				while(open){
-					//prepare the packets for transmission,
-					createPackets(name);
-					if(trace)
-						System.out.println("File loaded into the buffer to be sent.");
+
 
 					
 
@@ -486,43 +491,38 @@ public class Host {
 		System.out.println(filename.length());
 		
 		mess[0] = (byte) priority;
-		int newtemp = 1;
+                count++;
 		
 		//server port number
-		ByteBuffer servPort = ByteBuffer.allocate(2);
-		servPort.putShort((short) sPort);
 		byte [] servp = new byte [2];
-		
-                servp[0] = (byte) (sPort & 0xFF);
-                servp[1] = (byte) ((sPort >> 8) & 0xFF);
-                count += 2;
+                    servp[0] = (byte) (sPort & 0xFF);
+                    servp[1] = (byte) ((sPort >> 8) & 0xFF);
 		
 		for(int i = 0; i < servAdd.length; i++) {
-			mess[i + 1] = servAdd[i];
-			newtemp++;
+			mess[count++] = servAdd[i];
 		}
-		count += newtemp;
+                
 		for(int i = 0; i < servp.length; i++) {
-			mess[i + newtemp] = servp[i];
-			count++;
+			mess[count++] = servp[i];
 		}
 		
 		byte [] size = new byte[4];
-		size[0] = (byte) (totalLength & 0xFF);
-		size[1] = (byte) ((totalLength >> 8) & 0xFF);
-		size[2] = (byte) ((totalLength >> 16) & 0xFF);
-		size[3] = (byte) ((totalLength >> 24) & 0xFF);
+		size[3] = (byte) (totalLength & 0xFF);
+		size[2] = (byte) ((totalLength >> 8) & 0xFF);
+		size[1] = (byte) ((totalLength >> 16) & 0xFF);
+		size[0] = (byte) ((totalLength >> 24) & 0xFF);
+                
+                ByteBuffer s = ByteBuffer.wrap(size);
+                    System.out.println(s.getInt());
 		
 		
 		for(int i = 0; i < size.length; i++) {
-			mess[i + count] = size[i];
+			mess[count++] = size[i];
 		}
 		
-		newtemp = 11;
-		
                 byte[] name = filename.getBytes();
-		for(int i = 11; i < mess.length; i++) {
-			mess[i] = name[i - 11];
+		for(int i = count; i < mess.length; i++) {
+			mess[i] = name[i - count];
 		}
 
 		return mess;
@@ -541,24 +541,18 @@ public class Host {
 		
                 //Load ID
 		head[count++] = (byte) (id & 0xFF);
-        head[count++] = (byte) ((id >> 8) & 0xFF);
+                head[count++] = (byte) ((id >> 8) & 0xFF);
+
+                //Load zeroes
+                head[count++] = (byte) 0;//padding
+                head[count++] = (byte) 0;//padding
 		
-        head[count++] = (byte) 0;//padding
-        head[count++] = (byte) 0;//padding
-		
-		
-		ByteBuffer sequence = ByteBuffer.allocate(2);
-		sequence.putShort((short) seq);
-		for(int i = 0; i < 2; i++) {
-			head[i + count] = sequence.get(i);
-			temp++;
-		}
-		
-		count += temp;
-		temp = 0;
+                //Load Seq number
+                head[count++] = (byte) (seq & 0xFF);
+                head[count++] = (byte) ((seq >> 8) & 0xFF);
 		
 		head[count++] = (byte) (dataLen & 0xFF);
-        head[count++] = (byte) ((dataLen >> 8) & 0xFF);
+                head[count++] = (byte) ((dataLen >> 8) & 0xFF);
 		
 		ByteBuffer cs = ByteBuffer.allocate(4);
 		cs.putInt((int) check);
