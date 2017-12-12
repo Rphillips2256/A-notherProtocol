@@ -16,8 +16,6 @@ import java.util.zip.CRC32;
 public class Server {
     
     /*TODO
-    * Write to file
-    * Log function
     */
 	
     static DatagramSocket serverSocket;
@@ -31,6 +29,7 @@ public class Server {
         
         Scanner console = new Scanner(System.in);
         FileWriter logOut = new FileWriter("log.txt");
+        FileWriter fileOut;
         
         InetAddress igAddr, hostAddr;
         int igPort, hostPort, lengthOfMessage;
@@ -447,6 +446,14 @@ public class Server {
                         logOut.write("\n\nACK sent...");
                     }
                     
+                    //Convert file bytes to String
+                    wholeMsg = new String(wholeMsgData);
+
+                    //Copy file to file
+                    fileOut = new FileWriter(fileName);
+                        fileOut.write(wholeMsg);
+                        fileOut.close();
+                    
                     //Reset variables
                     hostAddr = null;
                     hostPort = -1;
@@ -606,7 +613,11 @@ public class Server {
                         }
 
                         if(trace) {
-                            System.out.println("Gateway IP address loaded... " + 
+                            System.out.println("\nGateway IP address loaded... " + 
+                                                Arrays.toString(addr));
+                        }
+                        if(log) {
+                            logOut.write("\n\nGateway IP address loaded... " + 
                                                 Arrays.toString(addr));
                         }
 
@@ -617,6 +628,9 @@ public class Server {
                         if(trace) {
                             System.out.println("ID loaded... " + connID);
                         }
+                        if(log) {
+                            logOut.write("\nID loaded... " + connID);
+                        }
 
                         //Load reserved space
                         data[6] = (byte) 0;
@@ -624,6 +638,9 @@ public class Server {
 
                         if(trace) {
                             System.out.println("Zeroes loaded... ");
+                        }
+                        if(log) {
+                            logOut.write("\nZeroes loaded... ");
                         }
 
                         //Generate CRC value
@@ -643,6 +660,9 @@ public class Server {
                         if(trace) {
                             System.out.println("CRC value loaded... " + Arrays.toString(crcValue));
                         }
+                        if(log) {
+                            logOut.write("\nCRC value loaded... " + Arrays.toString(crcValue));
+                        }
 
                         //Load ACK data
                         for(int i = 0; i < 2; i++){
@@ -653,6 +673,9 @@ public class Server {
                             String tempMsg = new String(ackData, 0, ackData.length);
 
                             System.out.println("Data loaded... " + tempMsg);
+                            if(log){
+                                logOut.write("Data loaded... " + tempMsg);
+                            }
                         }
 
                         // Create a datagram
@@ -662,11 +685,17 @@ public class Server {
                         if(trace) {
                             System.out.println("Message sent: " + Arrays.toString(data));
                         }
+                        if(log) {
+                            logOut.write("\nMessage sent: " + Arrays.toString(data));
+                        }
 
                         // Send a datagram carrying the data ACK			
                         serverSocket.send(datagram);
 
-                        System.out.println("ACK sent...");
+                        System.out.println("\nACK sent...");
+                        if(log){
+                            logOut.write("\n\nACK sent...");
+                        }
                     }
                 }
             }
