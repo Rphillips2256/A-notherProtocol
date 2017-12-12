@@ -20,8 +20,7 @@ import java.nio.file.Paths;
 public class Host {
     
     /*TODO
-    * Set up D_LEN to be size of data in app packet
-    * Add file type to mainHeader
+    * Log function
     */
 
 	static DatagramSocket clientSocket;
