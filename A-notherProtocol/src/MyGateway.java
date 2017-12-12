@@ -295,7 +295,7 @@ public class MyGateway {
                         //Read data
                         messageData = new byte[lengthOfMessage - 12];
                         for(int i = 12; i < lengthOfMessage; i++) {
-                            messageData[i] = receivedData[i];
+                            messageData[i - 12] = receivedData[i];
                         }
 
                         if(trace) {
