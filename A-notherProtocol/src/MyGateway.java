@@ -17,7 +17,6 @@ import java.util.zip.CRC32;
 public class MyGateway {
 
     /*TODO
-    * Error generation
     * Stat display
     * Log to file
     * Priority support
@@ -32,6 +31,7 @@ public class MyGateway {
         
         boolean trace = true;
         boolean log = false;
+        boolean lost = false;
         int errorRate = 0, oneRate = 0, twoRate = 0;
         
         Random random = new Random();
@@ -62,7 +62,7 @@ public class MyGateway {
         int appCount, udpCount;
         int rtMax;
         
-/*        
+        
         //User options
         while(input == -1){
             System.out.print("Enter desired error rate: ");
@@ -101,11 +101,11 @@ public class MyGateway {
                 }
                 
                 else {
-                    errorRate = input;
+                    twoRate = input;
                 }
         }
             input = -1;
-*/        
+        
         
         try {
             // Open a UDP datagram socket with a specified port number
@@ -140,6 +140,9 @@ public class MyGateway {
                                           "\nSender port number: " + senderPort +
                                           "\nMessage: " + message + "\n");
                 }
+                
+                //Reset lost
+                lost = false;
                 
                 //Establish which kind of message is being received
                 if(lengthOfMessage < 16) {  //ACK or close message
@@ -177,6 +180,43 @@ public class MyGateway {
                             String tempMsg = new String(messageData, 0, messageData.length);
                             
                             System.out.println("Message: " + tempMsg);
+                        }
+                        
+                        //Generate errors
+                        if(random.nextInt(100) < errorRate){//Error occurred
+                            int error = random.nextInt(100);
+                            
+                            if(error < oneRate){//One bit error
+                                int pos = random.nextInt(messageData.length - 1);
+                                int bit = random.nextInt(7);
+                                
+                                messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                                
+                                if(trace){
+                                    System.out.println("One bit error...");
+                                }
+                                    
+                            }
+                            
+                            else if(error < (twoRate + oneRate)){//Two bit error
+                                int pos = random.nextInt(messageData.length - 1);
+                                int bit = random.nextInt(7);
+                                
+                                messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                                
+                                pos = random.nextInt(messageData.length - 1);
+                                bit = random.nextInt(7);
+                                
+                                messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                                
+                                if(trace){
+                                    System.out.println("Two bit error...");
+                                }
+                            }
+                            
+                            else{//Lost packet
+                                lost = true;
+                            }
                         }
                         
                         //Forward message
@@ -222,8 +262,11 @@ public class MyGateway {
                             byte[] data = new byte[lengthOfMessage];
                             
                             //Copy data
-                            for(int i = 0; i < lengthOfMessage; i++){
+                            for(int i = 0; i < 12; i++){
                                 data[i] = receivedData[i];
+                            }
+                            for(int i = 0; i < messageData.length; i++){
+                                data[i + 12] = messageData[i];
                             }
                             
                             // Create a datagram
@@ -234,10 +277,16 @@ public class MyGateway {
                                 System.out.println("Message sent: " + Arrays.toString(data));
                             }
 
-                            //Send datagram to Host			
-                            serverSocket.send(datagram);
+                            //Send datagram			
+                            if(!lost){
+                                serverSocket.send(datagram);
+                                
+                                System.out.println("Message forwarded...");
+                            }
 
-                            System.out.println("Message forwarded...");
+                            if(lost){
+                                System.out.println("Packet lost...");
+                            }
                             
                             //Handle Closing ACK
                             String ackMessage = new String(data, 0, data.length);
@@ -683,7 +732,42 @@ public class MyGateway {
                     }
                     
                     //Generate errors
-                                                                                ///////////////////////////////////////////////////////////////////
+                    if(random.nextInt(100) < errorRate){//Error occurred
+                        int error = random.nextInt(100);
+
+                        if(error < oneRate){//One bit error
+                            int pos = random.nextInt(messageData.length - 1);
+                            int bit = random.nextInt(7);
+
+                            messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                            
+                            if(trace){
+                                System.out.println("One bit error...");
+                            }
+                        }
+
+                        else if(error < (twoRate + oneRate)){//Two bit error
+                            int pos = random.nextInt(messageData.length - 1);
+                            int bit = random.nextInt(7);
+
+                            messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+
+                            pos = random.nextInt(messageData.length - 1);
+                            bit = random.nextInt(7);
+
+                            messageData[pos] = (byte) (messageData[pos] ^ (1 << bit));
+                            
+                            if(trace){
+                                System.out.println("Two bit error...");
+                            }
+                        }
+
+                        else{//Lost packet
+                            lost = true;
+                        }
+                    }
+                    
+                    
                     //Forward message
                     //Find Connection in connectionTable
                     boolean match = false;
@@ -727,8 +811,11 @@ public class MyGateway {
                         byte[] data = new byte[lengthOfMessage];
 
                         //Copy data
-                        for(int i = 0; i < lengthOfMessage; i++){
+                        for(int i = 0; i < 16; i++){
                             data[i] = receivedData[i];
+                        }
+                        for(int i = 0; i < messageData.length; i++){
+                            data[i + 16] = messageData[i];
                         }
 
                         // Create a datagram
@@ -739,10 +826,16 @@ public class MyGateway {
                             System.out.println("Message sent: " + Arrays.toString(data));
                         }
 
-                        //Send datagram to Server			
-                        serverSocket.send(datagram);
+                        //Send datagram			
+                        if(!lost){
+                            serverSocket.send(datagram);
+                            
+                            System.out.println("Message forwarded...");
+                        }
 
-                        System.out.println("Message forwarded...");
+                        if(lost){
+                            System.out.println("Packet lost...");
+                        }
                     }
                 }
             }
