@@ -228,7 +228,7 @@ public class Host {
 						toLog.write("Datagram sent to IG to open the connection.\n");
 				}
 
-                                clientSocket.setSoTimeout(5000);
+                                clientSocket.setSoTimeout(1000);
                                 
                                 
                                         //receive something from the IG for the connection being open
@@ -410,7 +410,7 @@ public class Host {
 						if(log)
 							toLog.write("The message is sent waiting for acknowledgement.\n");
 					}
-					clientSocket.setSoTimeout(5000);
+					clientSocket.setSoTimeout(1000);
 
 					try {
 						
