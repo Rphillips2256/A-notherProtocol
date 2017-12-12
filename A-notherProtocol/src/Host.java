@@ -51,8 +51,9 @@ public class Host {
 		boolean flag = true;
 		String name = "";
 		String name1 = "/Users/rs5634nr/git/A-notherProtocol/A-notherProtocol/src/alice.txt";
-		String name2 = "";
+		String name2 = "C:/Users/Adam/Desktop/test1.txt";
 		String name3 = "";
+                String fileName = "";
 
 		while(flag) {
 			
@@ -90,6 +91,9 @@ public class Host {
 				break;
 			}
 
+                        //Get file name
+                        String[] tempName = name.split("/");
+                            fileName = tempName[tempName.length - 1];
 
 			try {
 
@@ -98,7 +102,7 @@ public class Host {
 
 				//Get the IG ip address and port number
 				//modify this to make it correct.
-				gatewayAddr = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 61};
+				gatewayAddr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
 
 
 
@@ -122,16 +126,16 @@ public class Host {
 				//gateway ip address
 
 
-				addr = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 31};//146.57.194.31
-				servAddress = new byte[] {(byte) 146,(byte) 57,(byte) 194,(byte) 61};
+				addr = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 14};//146.57.194.31
+				servAddress = new byte[] {(byte) 192,(byte) 168,(byte) 1,(byte) 2};
 
 				header = openHead(addr, gatewayAddr, gatewayPort, hostPort);
 				if(trace)
 					System.out.println("Building the header for the open connection.");
-				dataBuffer = new byte[33];
+				dataBuffer = new byte[11 + fileName.length()];
 				byte [] total = (Files.readAllBytes(Paths.get(name)));
 				int lenTotal = total.length;
-				dataBuffer = openMess(servAddress, serverPort, desPri, lenTotal, name);
+				dataBuffer = openMess(servAddress, serverPort, desPri, lenTotal, fileName);
 				if(trace)
 					System.out.println("Building the data to be sent.");
 
@@ -163,7 +167,7 @@ public class Host {
 
 				//System.out.println(count1);
 				//buid the openMessage
-				message = new byte[95];
+				message = new byte[header.length + dataBuffer.length];
 				for(int i = 0; i < header.length; i++) {
 					message[i] = header[i];
 				}
@@ -234,12 +238,15 @@ public class Host {
 				checksum.reset();
 				checksum.update(recData);
 				long dataCheck = checksum.getValue();
-				byte [] gID = new byte[2];
+				
+                                byte [] gID = new byte[2];
 				for(int i = 0; i < gID.length; i++) {
-					gID[i] = receivedHeader[i];
+					gID[i] = receivedHeader[i + 4];
 				}
 
-				conID = getInt(gID);
+				int low = gID[0] >= 0 ? gID[0] : 256 + gID[0];
+                                int high = gID[1] >= 0 ? gID[1] : 256 + gID[1];
+                                conID = low | (high << 8);
 
 				if(dataCheck == checkVal) {
 
@@ -266,9 +273,11 @@ public class Host {
 					if(trace)
 						System.out.println("File loaded into the buffer to be sent.");
 
-					mainDataMessage = new byte[1516];
+					
 
 					byte [] m = packet.get(packetCount);
+                                        
+                                        mainDataMessage = new byte[m.length + 16];
 					
 					if(trace)
 						System.out.println("Data packet loaded into the frame.");
@@ -329,9 +338,11 @@ public class Host {
 							recData[i] = receivedData[i + out];
 						}
 
-						int curr = getInt(recData);
+						low = recData[0] >= 0 ? recData[0] : 256 + recData[0];
+                                                high = recData[1] >= 0 ? recData[1] : 256 + recData[1];
+                                                    int curr = low | (high << 8);
 
-						if(curr == conID) {
+						if(curr == seq) {
 							packetCount++;
 							seq++;
 						} else {
@@ -346,17 +357,17 @@ public class Host {
 					if(packetCount == packet.size()) {
 
 						byte [] closeHeader = new byte [12];
-						byte [] closeMess;
+						byte [] closeMess = new byte[2];
 						long closeCheck = 0;
-						String end = "END";
-
-						closeMess = end.getBytes();
+                                                
+                                                closeMess[0] = (byte) (conID & 0xFF);
+                                                closeMess[1] = (byte) ((conID >> 8) & 0xFF);
 
 						closeCheck = calculateChecksum(checksum, closeMess);
 
 						closeHeader = closeHead(gatewayAddr, addr, closeCheck);
 
-						byte [] close = new byte[15];
+						byte [] close = new byte[14];
 
 						count1 = 0;
 
@@ -468,26 +479,11 @@ public class Host {
 	}
 	
 	public static byte [] openMess(byte [] servAdd, int sPort, int priority,int totalLength, String filename) {
-		byte [] mess = new byte[21];
+		byte [] mess = new byte[11 + filename.length()];
 		
 		
-		
-		String fileName = "";
-		switch(filename) {
-		case "/Users/rs5634nr/git/A-notherProtocol/A-notherProtocol/src/alice.txt":
-			fileName = "alice.txt";
-			break;
-		case "TBD":
-			break;
-		case "TB":
-			break;
-		}
-		
-		byte [] file = fileName.getBytes();
 		int count = 0;
-		System.out.println(file.length);
-		
-		
+		System.out.println(filename.length());
 		
 		mess[0] = (byte) priority;
 		int newtemp = 1;
@@ -522,13 +518,13 @@ public class Host {
 			mess[i + count] = size[i];
 		}
 		
-		newtemp = 12;
+		newtemp = 11;
 		
-		for(int i = 0; i < file.length; i++) {
-			mess[i + newtemp] = file[i];
+                byte[] name = filename.getBytes();
+		for(int i = 11; i < mess.length; i++) {
+			mess[i] = name[i - 11];
 		}
-		
-		
+
 		return mess;
 	}
 	
@@ -576,7 +572,8 @@ public class Host {
 	public static long calculateChecksum(CRC32 c,byte [] d ) {
 		long s = 0;
 		
-		c.update(d);
+		c.reset();
+                c.update(d);
 		s = c.getValue();
 		
 		return s;
