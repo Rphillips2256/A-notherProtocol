@@ -37,7 +37,7 @@ public class Server {
         
         CRC32 checker = new CRC32();
         byte[] msgData, ackData;
-        int connID, fileSize = 0, seqNum, lastSeq;
+        int connID, fileSize = 0, seqNum, currSeq = -1;
         
         
         try {
@@ -107,6 +107,10 @@ public class Server {
                                             receivedData[10], receivedData[11]};
                         ByteBuffer size = ByteBuffer.wrap(c);
                         fileSize = size.getInt();
+                        
+                    if(trace){
+                        System.out.println("File size: " + fileSize);
+                    }
                     
                     //Get file name
                     byte[] d = new byte[lengthOfMessage - 12];
@@ -114,6 +118,10 @@ public class Server {
                         d[i - 12] = receivedData[i];
                     }
                     fileName = new String(d, 0, d.length);
+                    
+                    if(trace){
+                        System.out.println("File name: " + fileName);
+                    }
                     
                     //Send ACK
                     //Create ACK data
@@ -315,7 +323,7 @@ public class Server {
                     hostPort = -1;
                     connID = -1;
                     seqNum = -1;
-                    lastSeq = -1;
+                    currSeq = -1;
                 }
                 
                 else {                                                          //Data message
@@ -404,19 +412,23 @@ public class Server {
                         }
 
                         else {//No error detected
-                        //Load into wholeMsgData
-                        if(index == 0){
-                            wholeMsgData = new byte[fileSize];
-                        }
-                        
-                        for(int i = 0; i < msgData.length; i++){
-                            wholeMsgData[index++] = msgData[i];
-                        }
-                        
-                        if(trace) {
-                            wholeMsg = new String(wholeMsgData, 0, wholeMsgData.length);
+                        if(seqNum != currSeq){
+                            //Load into wholeMsgData
+                            if(index == 0){
+                                wholeMsgData = new byte[fileSize];
+                            }
+
+                            for(int i = 0; i < msgData.length; i++){
+                                wholeMsgData[index++] = msgData[i];
+                            }
+
+                            currSeq = seqNum;
                             
-                            System.out.println("Message: " + wholeMsg);
+                            if(trace) {
+                                wholeMsg = new String(wholeMsgData, 0, wholeMsgData.length);
+
+                                //System.out.println("Message: " + wholeMsg);
+                            }
                         }
                     
                         //Send ACK
