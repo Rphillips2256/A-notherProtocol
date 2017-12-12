@@ -24,9 +24,13 @@ public class Server {
 
     private static final int PORT = 18987;
 	
-    public static void main(String [] args){
+    public static void main(String [] args) throws IOException{
         
-        boolean trace = true;
+        boolean trace = false;
+        boolean log = false;
+        
+        Scanner console = new Scanner(System.in);
+        FileWriter logOut = new FileWriter("log.txt");
         
         InetAddress igAddr, hostAddr;
         int igPort, hostPort, lengthOfMessage;
@@ -37,9 +41,46 @@ public class Server {
         int index = 0;
         
         CRC32 checker = new CRC32();
+        int choice = -1;
         byte[] msgData, ackData;
         int connID, fileSize = 0, seqNum, currSeq = -1;
         
+        
+        //User options
+        while(choice == -1){
+            System.out.println("Would you like to use the trace function?\n" +
+                             "1 ---------------- Yes\n" +
+                             "2 ---------------- No");
+                choice = console.nextInt();
+                if(choice != 1 && choice != 2){
+                    choice = -1;
+                    System.out.println("Invalid choice...");
+                }
+                
+                else{
+                    if(choice == 1){
+                        trace = true;
+                        
+                        choice = -1;
+                        while(choice == -1){
+                            System.out.println("Would you like to write it to a log file?\n" +
+                                               "1 ---------------- Yes\n" +
+                                               "2 ---------------- No");
+                                choice = console.nextInt();
+                                if(choice != 1 && choice != 2){
+                                    choice = -1;
+                                    System.out.println("Invalid choice...");
+                                }
+                                
+                                else{
+                                    if(choice == 1){
+                                        log = true;
+                                    }
+                                }
+                        }
+                    }
+                }
+        }
         
         try {
             // Open a UDP datagram socket with a specified port number
@@ -70,9 +111,19 @@ public class Server {
                                        "\nGateway port number: " + igPort +
                                        "\nMessage: " + message);
                 }
+                if(log) {
+                    logOut.write("\nGateway IP address: " + igAddr.toString() +
+                                 "\nGateway port number: " + igPort +
+                                 "\nMessage: " + message);
+                }
 
                 //Establish which kind of message is being received
-                if(lengthOfMessage > 14 && receivedData[6] != 0 && receivedData[7] != 0) {                                      //Open message
+                if(lengthOfMessage > 14 && receivedData[6] != 0 && receivedData[7] != 0) {//Open message
+                    System.out.println("\nOpen message received...");
+                    if(log){
+                        logOut.write("\n\nOpen message received...");
+                    }
+
                     //Read header contents
                     //Get Connection ID
                     byte[] a = new byte[]{receivedData[0], receivedData[1]};
@@ -81,7 +132,10 @@ public class Server {
                             connID = low | (high << 8);
                             
                     if(trace){
-                        System.out.println("Connecton ID: " + connID);
+                        System.out.println("\nConnecton ID: " + connID);
+                    }
+                    if(log){
+                        logOut.write("\n\nConnecton ID: " + connID);
                     }
 
                     //Get Host IP address
@@ -91,6 +145,9 @@ public class Server {
                         
                     if(trace){
                         System.out.println("Host IP address: " + hostAddr.toString());
+                    }
+                    if(log){
+                        logOut.write("\nHost IP address: " + hostAddr.toString());
                     }
                     
                     //Get Host port number
@@ -102,6 +159,9 @@ public class Server {
                     if(trace){
                         System.out.println("Host port number: " + hostPort);
                     }
+                    if(log){
+                        logOut.write("\nHost port number: " + hostPort);
+                    }
                     
                     //Get file size
                     byte[] c = new byte[]{receivedData[8], receivedData[9],
@@ -111,6 +171,9 @@ public class Server {
                         
                     if(trace){
                         System.out.println("File size: " + fileSize);
+                    }
+                    if(log){
+                        logOut.write("\nFile size: " + fileSize);
                     }
                     
                     //Get file name
@@ -122,6 +185,9 @@ public class Server {
                     
                     if(trace){
                         System.out.println("File name: " + fileName);
+                    }
+                    if(log){
+                        logOut.write("\nFile name: " + fileName);
                     }
                     
                     //Send ACK
@@ -143,6 +209,10 @@ public class Server {
                         System.out.println("Gateway IP address loaded... " + 
                                             Arrays.toString(addr));
                     }
+                    if(log) {
+                        logOut.write("\n\nGateway IP address loaded... " + 
+                                            Arrays.toString(addr));
+                    }
                     
                     //Load Connection ID
                     data[4] = (byte) (connID & 0xFF);
@@ -151,6 +221,9 @@ public class Server {
                     if(trace) {
                         System.out.println("ID loaded... " + connID);
                     }
+                    if(log) {
+                        logOut.write("\nID loaded... " + connID);
+                    }
                     
                     //Load reserved space
                     data[6] = (byte) 0;
@@ -158,6 +231,9 @@ public class Server {
 
                     if(trace) {
                         System.out.println("Zeroes loaded... ");
+                    }
+                    if(log) {
+                        logOut.write("\nZeroes loaded... ");
                     }
                     
                     //Generate CRC value
@@ -174,6 +250,9 @@ public class Server {
                     if(trace){
                         System.out.println("CRC value: " + checker.getValue());
                     }
+                    if(log){
+                        logOut.write("\nCRC value: " + checker.getValue());
+                    }
                     
                     //Load CRC value
                     for(int i = 0; i < 4; i++){
@@ -182,6 +261,9 @@ public class Server {
                     
                     if(trace) {
                         System.out.println("CRC value loaded... " + Arrays.toString(crcValue));
+                    }
+                    if(log) {
+                        logOut.write("\nCRC value loaded... " + Arrays.toString(crcValue));
                     }
                     
                     //Load ACK data
@@ -193,7 +275,11 @@ public class Server {
                         String tempMsg = new String(ackData, 0, ackData.length);
                         
                         System.out.println("Data loaded... " + tempMsg);
+                        if(log){
+                            logOut.write("\nData loaded... " + tempMsg);
+                        }
                     }
+                    
                     
                     // Create a datagram
                     DatagramPacket datagram = 
@@ -202,14 +288,25 @@ public class Server {
                     if(trace) {
                         System.out.println("Message sent: " + Arrays.toString(data));
                     }
+                    if(log) {
+                        logOut.write("\nMessage sent: " + Arrays.toString(data));
+                    }
 
                     // Send a datagram carrying the connection ACK			
                     serverSocket.send(datagram);
 
-                    System.out.println("ACK sent...");
+                    System.out.println("\nACK sent...");
+                    if(log){
+                        logOut.write("\n\nACK sent...");
+                    }
                 }
                 
                 else if(lengthOfMessage == 14){                                 //Close message
+                    System.out.println("\nClose message received...");
+                    if(log){
+                        logOut.write("\n\nClose message received...");
+                    }
+                    
                     //Read header contents
                     //Get Gateway IP address
                     byte[] gAddr = new byte[]{receivedData[0], receivedData[1], 
@@ -217,7 +314,10 @@ public class Server {
                         igAddr = InetAddress.getByAddress(gAddr);
                         
                     if(trace){
-                        System.out.println("Gateway IP address: " + igAddr.toString());
+                        System.out.println("\nGateway IP address: " + igAddr.toString());
+                    }
+                    if(log){
+                        logOut.write("\n\nGateway IP address: " + igAddr.toString());
                     }
                     
                     //Get Host IP address
@@ -228,6 +328,9 @@ public class Server {
                     if(trace){
                         System.out.println("Host IP address: " + hostAddr.toString());
                     }
+                    if(log){
+                        logOut.write("\nHost IP address: " + hostAddr.toString());
+                    }
                     
                     //Get Connection ID
                     byte[] a = new byte[]{receivedData[12], receivedData[13]};
@@ -237,6 +340,9 @@ public class Server {
                             
                     if(trace){
                         System.out.println("Connecton ID: " + connID);
+                    }
+                    if(log){
+                        logOut.write("\nConnecton ID: " + connID);
                     }
                     
                     //Send ACK
@@ -255,7 +361,11 @@ public class Server {
                     }
 
                     if(trace) {
-                        System.out.println("Gateway IP address loaded... " + 
+                        System.out.println("\nGateway IP address loaded... " + 
+                                            Arrays.toString(addr));
+                    }
+                    if(log) {
+                        logOut.write("\n\nGateway IP address loaded... " + 
                                             Arrays.toString(addr));
                     }
                     
@@ -266,6 +376,9 @@ public class Server {
                     if(trace) {
                         System.out.println("ID loaded... " + connID);
                     }
+                    if(log) {
+                        logOut.write("\nID loaded... " + connID);
+                    }
                     
                     //Load reserved space
                     data[6] = (byte) 0;
@@ -273,6 +386,9 @@ public class Server {
 
                     if(trace) {
                         System.out.println("Zeroes loaded... ");
+                    }
+                    if(log) {
+                        logOut.write("\nZeroes loaded... ");
                     }
                     
                     //Generate CRC value
@@ -294,6 +410,9 @@ public class Server {
                     if(trace) {
                         System.out.println("CRC value loaded... " + Arrays.toString(crcValue));
                     }
+                    if(log) {
+                        logOut.write("\nCRC value loaded... " + Arrays.toString(crcValue));
+                    }
                     
                     //Load ACK data
                     for(int i = 0; i < 3; i++){
@@ -304,6 +423,9 @@ public class Server {
                         String tempMsg = new String(ackData, 0, ackData.length);
                         
                         System.out.println("Data loaded... " + tempMsg);
+                        if(log){
+                            logOut.write("\nData loaded... " + tempMsg);
+                        }
                     }
                     
                     // Create a datagram
@@ -313,11 +435,17 @@ public class Server {
                     if(trace) {
                         System.out.println("Message sent: " + Arrays.toString(data));
                     }
+                    if(log) {
+                        logOut.write("\nMessage sent: " + Arrays.toString(data));
+                    }
 
                     // Send a datagram carrying the closing ACK			
                     serverSocket.send(datagram);
 
-                    System.out.println("ACK sent...");
+                    System.out.println("\nACK sent...");
+                    if(log){
+                        logOut.write("\n\nACK sent...");
+                    }
                     
                     //Reset variables
                     hostAddr = null;
@@ -325,9 +453,19 @@ public class Server {
                     connID = -1;
                     seqNum = -1;
                     currSeq = -1;
+                    
+                    //Close log file
+                    if(log){
+                        logOut.close();
+                    }
                 }
                 
                 else {                                                          //Data message
+                    System.out.println("\nData message received...");
+                    if(log){
+                        logOut.write("\n\nData message received...");
+                    }
+                    
                     //Read header contents
                     //Get Gateway IP address
                     byte[] gAddr = new byte[]{receivedData[0], receivedData[1], 
@@ -335,7 +473,10 @@ public class Server {
                         igAddr = InetAddress.getByAddress(gAddr);
                         
                     if(trace){
-                        System.out.println("Gateway IP address: " + igAddr.toString());
+                        System.out.println("\nGateway IP address: " + igAddr.toString());
+                    }
+                    if(log){
+                        logOut.write("\n\nGateway IP address: " + igAddr.toString());
                     }
                     
                     //Get Connection ID
@@ -347,6 +488,9 @@ public class Server {
                     if(trace){
                         System.out.println("Connecton ID: " + connID);
                     }
+                    if(log){
+                        logOut.write("\nConnecton ID: " + connID);
+                    }
                     
                     //Get SEQ number
                     byte[] d = new byte[]{receivedData[8], receivedData[9]};
@@ -357,6 +501,9 @@ public class Server {
                     if(trace) {
                         System.out.println("Sequence number: " + seqNum);
                     }
+                    if(log) {
+                        logOut.write("\nSequence number: " + seqNum);
+                    }
                             
                     //Get length of data
                     byte[] e = new byte[]{receivedData[10], receivedData[11]};
@@ -366,6 +513,9 @@ public class Server {
                             
                     if(trace) {
                         System.out.println("Length of data: " + dataLength);
+                    }
+                    if(log) {
+                        logOut.write("\nLength of data: " + dataLength);
                     }
                     
                     //Read data
@@ -379,6 +529,9 @@ public class Server {
                     checker.update(msgData);
                     if(trace){
                         System.out.println("Calculated CRC: " + checker.getValue());
+                    }
+                    if(log){
+                        logOut.write("\nCalculated CRC: " + checker.getValue());
                     }
                     
                     byte[] checkArray = new byte[]{receivedData[12], receivedData[13],
@@ -400,15 +553,25 @@ public class Server {
                         if(trace) {
                            System.out.println("CRC32 value: " + checkVal);
                         }
+                        if(log) {
+                           logOut.write("\nCRC32 value: " + checkVal);
+                        }
 
                         if(trace) {
                             System.out.println("Comparing " + checker.getValue() +
                                                " and " + checkVal);
                         }
+                        if(log) {
+                            logOut.write("\nComparing " + checker.getValue() +
+                                               " and " + checkVal);
+                        }
+                        
                         if(checker.getValue() != checkVal) {//Error detected
                             //Do nothing
-                            if(trace) {
-                                System.out.println("Error detected...");
+                            System.out.println("Error detected...");
+                            
+                            if(log) {
+                                logOut.write("\nError detected...");
                             }
                         }
 
@@ -424,12 +587,6 @@ public class Server {
                             }
 
                             currSeq = seqNum;
-                            
-                            if(trace) {
-                                wholeMsg = new String(wholeMsgData, 0, wholeMsgData.length);
-
-                                //System.out.println("Message: " + wholeMsg);
-                            }
                         }
                     
                         //Send ACK
