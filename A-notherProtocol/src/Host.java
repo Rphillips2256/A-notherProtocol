@@ -38,7 +38,7 @@ public class Host {
 		byte [] dataBuffer;
 		byte [] header;
 		byte [] mainDataMessage;
-		int desPri = 0, gatewayPort, serverPort, hostPort, conID;
+		int desPri = 0, gatewayPort, serverPort, hostPort, conID = 0;
 		int appCount = 0;
 		int choice = 0;
 		int timeout = 0;
@@ -228,99 +228,119 @@ public class Host {
 						toLog.write("Datagram sent to IG to open the connection.\n");
 				}
 
-				//receive something from the IG for the connection being open
+                                clientSocket.setSoTimeout(5000);
+                                
+                                
+                                        //receive something from the IG for the connection being open
 
-				byte[] receivedData = new byte[2048];
+                                        byte[] receivedData = new byte[2048];
 
-				// Create a datagram
-				DatagramPacket receivedDatagram = 
-						new DatagramPacket(receivedData, receivedData.length);
+                                        // Create a datagram
+                                        DatagramPacket receivedDatagram = 
+                                                        new DatagramPacket(receivedData, receivedData.length);
+                                
+                                while(!open){
+                                    try{
+                                        // Receive a datagram
+                                        clientSocket.receive(receivedDatagram);
 
-				// Receive a datagram
-				clientSocket.receive(receivedDatagram);
+                                        if(trace) {
+                                                System.out.println("Datagram Receieved");
 
-				if(trace) {
-					System.out.println("Datagram Receieved");
-					
-					if(log)
-						toLog.write("Datagram Receieved\n");
-				}
+                                                if(log)
+                                                        toLog.write("Datagram Receieved\n");
+                                        }
 
-				//split data from header
+                                        //split data from header
 
-				byte [] receivedHeader = new byte[12];
-				byte[] recData = new byte[receivedDatagram.getLength() - 12];
-				int out = 0;
-				for(int i = 0; i < receivedHeader.length; i++) {
-					receivedHeader[i] = receivedData[i];
-				}
-				byte [] cSum = new byte [4];
+                                        byte [] receivedHeader = new byte[12];
+                                        byte[] recData = new byte[receivedDatagram.getLength() - 12];
+                                        int out = 0;
+                                        for(int i = 0; i < receivedHeader.length; i++) {
+                                                receivedHeader[i] = receivedData[i];
+                                        }
+                                        byte [] cSum = new byte [4];
 
-				for(int i = 0; i < cSum.length; i++) {
-					cSum[i] = receivedHeader[i + 8];
-				}
+                                        for(int i = 0; i < cSum.length; i++) {
+                                                cSum[i] = receivedHeader[i + 8];
+                                        }
 
-				out += receivedHeader.length;
+                                        out += receivedHeader.length;
 
-				for(int i = 0; i < recData.length; i++) {
-					recData[i] = receivedData[i + out];
-				}
+                                        for(int i = 0; i < recData.length; i++) {
+                                                recData[i] = receivedData[i + out];
+                                        }
 
-				//long sumCheck = toLong(cSum);
+                                        //long sumCheck = toLong(cSum);
 
-				ByteBuffer bb = ByteBuffer.wrap(cSum);
-				long checkValue = bb.getInt();
+                                        ByteBuffer bb = ByteBuffer.wrap(cSum);
+                                        long checkValue = bb.getInt();
 
-				long checkVal = 0;
+                                        long checkVal = 0;
 
-				if(checkValue < 0){
-					checkVal = checkValue + 2147483647 + 2147483647 + 2;
-				}
+                                        if(checkValue < 0){
+                                                checkVal = checkValue + 2147483647 + 2147483647 + 2;
+                                        }
 
-				else {
-					checkVal = checkValue;
-				}
+                                        else {
+                                                checkVal = checkValue;
+                                        }
 
-				checksum.reset();
-				checksum.update(recData);
-				long dataCheck = checksum.getValue();
+                                        checksum.reset();
+                                        checksum.update(recData);
+                                        long dataCheck = checksum.getValue();
 
-				byte [] gID = new byte[2];
-				for(int i = 0; i < gID.length; i++) {
-					gID[i] = receivedHeader[i + 4];
-				}
+                                        byte [] gID = new byte[2];
+                                        for(int i = 0; i < gID.length; i++) {
+                                                gID[i] = receivedHeader[i + 4];
+                                        }
 
-				int low = gID[0] >= 0 ? gID[0] : 256 + gID[0];
-				int high = gID[1] >= 0 ? gID[1] : 256 + gID[1];
-				conID = low | (high << 8);
+                                        int low = gID[0] >= 0 ? gID[0] : 256 + gID[0];
+                                        int high = gID[1] >= 0 ? gID[1] : 256 + gID[1];
+                                        conID = low | (high << 8);
 
-				if(dataCheck == checkVal) {
+                                        if(dataCheck == checkVal) {
 
 
 
-					String openMessage = new String(recData, 0, recData.length);
-					System.out.println(openMessage);
+                                                String openMessage = new String(recData, 0, recData.length);
+                                                System.out.println(openMessage);
 
-					if(openMessage.equals("ACK")) {
-						open = true;
+                                                    if(openMessage.equals("ACK")) {
+                                                            open = true;
+                                                            if(trace) {
+                                                                    System.out.println("Connection now open preparing to send data.");
+
+                                                                    if(log)
+                                                                            toLog.write("Connection now open preparing to send data.\n");
+                                                            }
+                                                    }
+                                            } else {
+
+                                                    clientSocket.send(nData);
+                                                    appCount++;
+                                                    if(trace) {
+                                                            System.out.println("The connection is not open resending request.");
+
+                                                            if(log)
+                                                                    toLog.write("The connection is not open resending request.\n");
+                                                    }
+                                            }
+                                    }
+                                
+                                catch (SocketTimeoutException e) {
+						System.out.println("Timeout reached: " + e);
+						resent++;
+						timeout++;
 						if(trace) {
-							System.out.println("Connection now open preparing to send data.");
+							System.out.println("Reached timeout resending file.");
 							
 							if(log)
-								toLog.write("Connection now open preparing to send data.\n");
+								toLog.write("Reached timeout resending file.\n");
 						}
-					}
-				} else {
 
-					clientSocket.send(nData);
-					appCount++;
-					if(trace) {
-						System.out.println("The connection is not open resending request.");
-						
-						if(log)
-							toLog.write("The connection is not open resending request.\n");
 					}
-				}
+                                }
 
 				//prepare the packets for transmission,
 				createPackets(name);
@@ -390,23 +410,24 @@ public class Host {
 						if(log)
 							toLog.write("The message is sent waiting for acknowledgement.\n");
 					}
-					clientSocket.setSoTimeout(10000);
+					clientSocket.setSoTimeout(5000);
 
 					try {
-						clientSocket.receive(receivedDatagram);
+						
+                                            clientSocket.receive(receivedDatagram);
 						if(trace) {
 							System.out.println("Received a datagram.");
 							
 							if(log)
 								toLog.write("Received a datagram.\n");
 						}
-						receivedHeader = new byte[12];
-						recData = new byte[receivedDatagram.getLength() - 12];
-						out = 0;
+                                            byte[] receivedHeader = new byte[12];
+                                            byte[] recData = new byte[receivedDatagram.getLength() - 12];
+                                            int out = 0;
 						for(int i = 0; i < receivedHeader.length; i++) {
 							receivedHeader[i] = receivedData[i];
 						}
-						cSum = new byte [4];
+                                            byte[] cSum = new byte [4];
 
 						for(int i = 0; i < cSum.length; i++) {
 							cSum[i] = receivedHeader[i + 4];
@@ -418,8 +439,8 @@ public class Host {
 							recData[i] = receivedData[i + out];
 						}
 
-						low = recData[0] >= 0 ? recData[0] : 256 + recData[0];
-						high = recData[1] >= 0 ? recData[1] : 256 + recData[1];
+                                            int low = recData[0] >= 0 ? recData[0] : 256 + recData[0];
+                                            int high = recData[1] >= 0 ? recData[1] : 256 + recData[1];
 						int curr = low | (high << 8);
 
 						if(curr == seq) {
