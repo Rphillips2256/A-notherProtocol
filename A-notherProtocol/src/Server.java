@@ -17,6 +17,7 @@ public class Server {
     
     /*TODO
     * Write to file
+    * Log function
     */
 	
     static DatagramSocket serverSocket;
