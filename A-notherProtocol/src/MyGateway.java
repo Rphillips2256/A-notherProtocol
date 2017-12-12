@@ -17,9 +17,7 @@ import java.util.zip.CRC32;
 public class MyGateway {
 
     /*TODO
-    * Stat display
     * Log to file
-    * Priority support
     */
 	
     static DatagramSocket serverSocket;
@@ -37,7 +35,6 @@ public class MyGateway {
         Random random = new Random();
         Scanner console = new Scanner(System.in);
         int input = -1;
-        String inTemp = "";
         
         int tableSize = 10;
         int tableCount = 0;
@@ -52,15 +49,16 @@ public class MyGateway {
         
         CRC32 checker = new CRC32();
         byte[] messageData;
-        int connID, seqNum, lastSeq;
+        int connID, seqNum;
         String fileName = null;
         Connection currConn = new Connection();
         
         //Stat variables
-        int fileSize;
+        int fileSize = 0;
         long endTime;
-        int appCount, udpCount;
-        int rtMax;
+        String last = "";
+        int appCount = 0, udpCount = 0;
+        int rtMax = 0,rtCount = 0, resent = 0;
         
         
         //User options
@@ -128,12 +126,29 @@ public class MyGateway {
                 serverSocket.receive(receivedDatagram);
 
                 System.out.println("\nMessage received...");
+                
+                //Increment UDP count
+                udpCount++;
 
                 //Open received DatagramPacket
                 senderAddr = receivedDatagram.getAddress();			
                 senderPort = receivedDatagram.getPort();
                 lengthOfMessage = receivedDatagram.getLength();			
                 String message = new String(receivedData, 0, receivedDatagram.getLength());
+                
+                //Check for duplicate
+                if(last.equals(message)){
+                    resent++;
+                    rtCount++;
+                }
+                else {
+                    appCount++;
+                    
+                    if(rtCount > rtMax){
+                        rtMax = rtCount;
+                    }
+                    rtCount = 0;
+                }
                 
                 if(trace) {
                        System.out.println("\nSender IP address: " + senderAddr.toString() +
@@ -289,8 +304,25 @@ public class MyGateway {
                             }
                             
                             //Handle Closing ACK
-                            String ackMessage = new String(data, 0, data.length);
+                            String ackMessage = new String(messageData, 0, messageData.length);
                             if(ackMessage.equals("END")){
+                                //Calculate stats
+                                endTime = (System.currentTimeMillis() - currConn.getStartTime());
+                                double expRT = (errorRate / (100 - errorRate));
+                                double perRT = ((resent / udpCount) * 100);
+
+                                //Display Stats
+                                System.out.println( "        Transfer Statistics\n" +
+                                                    "Size of file: " + fileSize + "\n" +
+                                                    "Transfer time: "+ endTime + "\n" +
+                                                    "Application messages: " + appCount + "\n" +
+                                                    "UDP datagrams: " + udpCount + "\n" +
+                                                    "Retransmissions: " + resent + "\n" +
+                                                    "Expected retransmissions: " + expRT + "\n" +
+                                                    "Max retransmissions: " + rtMax + "\n" +
+                                                    "Retransmission percentage: " + perRT);
+                                
+
                                 //Find index of Connection
                                 for(int i = 0; i < tableCount; i++){
                                     if(currConn.getId() == connectionTable[i].getId()){
@@ -301,7 +333,7 @@ public class MyGateway {
                                 }
 
                                 if(trace) {
-                                    System.out.println("Connection index: " + index);
+                                    System.out.println("\n\nConnection index: " + index);
                                 }
 
                                 //Update connectionTable
@@ -319,6 +351,7 @@ public class MyGateway {
                     }
                     
                     else {                                                      //Close message
+                        last = message;
                         if(trace) {
                             System.out.println("\nClose connection message received");
                         }
@@ -463,7 +496,8 @@ public class MyGateway {
                 }
                 
                 else if(receivedData[10] == 0 && receivedData[11] == 0) {       //Open message
-                   if(trace) {
+                    last = message;
+                    if(trace) {
                        System.out.println("\nOpen connection message received");
                     }
                    
@@ -605,11 +639,17 @@ public class MyGateway {
                         newConn.setPort1(senderPort);
                         newConn.setAddr2(receiverAddr);
                         newConn.setPort2(receiverPort);
+                        newConn.setStartTime(System.currentTimeMillis());
                             connectionTable[tableCount++] = newConn;
                         
                         if(trace) {
                             System.out.println("\nConnection " + (tableCount - 1) +
                                                "\n" + newConn.toString());
+                        }
+                        
+                        //Priority given to more important connection
+                        if(newConn.getPriority() > currConn.getPriority()){
+                            currConn = newConn;
                         }
                             
                         // Create a buffer for sending
@@ -681,6 +721,7 @@ public class MyGateway {
                 }
                 
                 else {                                                          //Data message
+                    last = message;
                     if(trace) {
                         System.out.println("Data message received");
                     }
